@@ -1,8 +1,9 @@
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { ArrowLeft, Camera } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -23,10 +24,12 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { insertClothingSchema, type InsertClothing } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { ObjectUploader } from "@/components/ObjectUploader";
 
 export default function AddClothing() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
 
   // Get tag ID from URL if coming from scanner
   const urlParams = new URLSearchParams(window.location.search);
@@ -45,6 +48,11 @@ export default function AddClothing() {
       timesWorn: 0,
     },
   });
+
+  const handleImageUpload = (imageUrl: string) => {
+    setUploadedImageUrl(imageUrl);
+    form.setValue("imageUrl", imageUrl);
+  };
 
   const addClothingMutation = useMutation({
     mutationFn: (data: InsertClothing) =>
@@ -97,16 +105,10 @@ export default function AddClothing() {
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             {/* Image Upload */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">Photo (Optional)</label>
-              <div className="h-48 border-2 border-dashed border-border rounded-lg flex flex-col items-center justify-center gap-3 bg-muted/20 hover-elevate cursor-pointer">
-                <Camera className="w-12 h-12 text-muted-foreground" />
-                <div className="text-center">
-                  <p className="text-sm font-medium text-foreground">Upload Photo</p>
-                  <p className="text-xs text-muted-foreground">Tap to add image</p>
-                </div>
-              </div>
-            </div>
+            <ObjectUploader
+              onUploadComplete={handleImageUpload}
+              currentImageUrl={uploadedImageUrl}
+            />
 
             {/* Tag ID */}
             <FormField
