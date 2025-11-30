@@ -1,6 +1,6 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, useLocation } from "wouter";
-import { ArrowLeft, Pencil, Trash2, Clock, Shirt } from "lucide-react";
+import { ArrowLeft, Pencil, Trash2, Clock, Shirt, WashingMachine } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -61,6 +61,19 @@ export default function ClothingDetail() {
     },
   });
 
+  const toggleLaundryMutation = useMutation({
+    mutationFn: () =>
+      apiRequest("PATCH", `/api/clothing/${id}/laundry`, undefined),
+    onSuccess: (data: Clothing) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/clothing", id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/clothing"] });
+      toast({
+        title: data.inLaundry === 1 ? "In Laundry" : "Available",
+        description: data.inLaundry === 1 ? "Item marked as in laundry" : "Item is now available to wear",
+      });
+    },
+  });
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
@@ -91,8 +104,7 @@ export default function ClothingDetail() {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-20">
-      {/* Header */}
+    <div className="min-h-screen bg-background pb-24">
       <div className="sticky top-0 z-10 bg-card border-b border-card-border p-4">
         <div className="flex items-center justify-between">
           <Button
@@ -145,7 +157,6 @@ export default function ClothingDetail() {
         </div>
       </div>
 
-      {/* Image */}
       <div className="w-full aspect-video bg-muted relative">
         {item.imageUrl ? (
           <img
@@ -158,11 +169,17 @@ export default function ClothingDetail() {
             <Shirt className="w-24 h-24 text-muted-foreground/30" />
           </div>
         )}
+        {item.inLaundry === 1 && (
+          <div className="absolute top-4 right-4">
+            <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-100">
+              <WashingMachine className="w-3 h-3 mr-1" />
+              In Laundry
+            </Badge>
+          </div>
+        )}
       </div>
 
-      {/* Details */}
       <div className="p-6 space-y-6">
-        {/* Title & Badges */}
         <div className="space-y-3">
           <h1 className="text-3xl font-bold text-foreground">{item.name}</h1>
           <div className="flex flex-wrap gap-2">
@@ -175,7 +192,6 @@ export default function ClothingDetail() {
           </div>
         </div>
 
-        {/* Info Cards */}
         <div className="grid grid-cols-2 gap-4">
           <Card className="p-4 text-center">
             <p className="text-4xl font-bold text-primary">{item.timesWorn}</p>
@@ -189,7 +205,6 @@ export default function ClothingDetail() {
           </Card>
         </div>
 
-        {/* Last Worn */}
         {item.lastWorn && (
           <Card className="p-4 flex items-center gap-3">
             <Clock className="w-5 h-5 text-muted-foreground" />
@@ -206,17 +221,32 @@ export default function ClothingDetail() {
           </Card>
         )}
 
-        {/* Actions */}
         <div className="space-y-3 pt-4">
           <Button
             data-testid="button-mark-worn"
             size="lg"
             className="w-full h-12"
             onClick={() => markAsWornMutation.mutate()}
-            disabled={markAsWornMutation.isPending}
+            disabled={markAsWornMutation.isPending || item.inLaundry === 1}
           >
             <Clock className="w-5 h-5 mr-2" />
             {markAsWornMutation.isPending ? "Updating..." : "Mark as Worn Today"}
+          </Button>
+
+          <Button
+            data-testid="button-toggle-laundry"
+            size="lg"
+            variant={item.inLaundry === 1 ? "default" : "outline"}
+            className="w-full h-12"
+            onClick={() => toggleLaundryMutation.mutate()}
+            disabled={toggleLaundryMutation.isPending}
+          >
+            <WashingMachine className="w-5 h-5 mr-2" />
+            {toggleLaundryMutation.isPending
+              ? "Updating..."
+              : item.inLaundry === 1
+              ? "Mark as Clean"
+              : "Send to Laundry"}
           </Button>
         </div>
       </div>

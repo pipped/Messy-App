@@ -9,11 +9,13 @@ export interface IStorage {
 
   getClothing(id: string): Promise<Clothing | undefined>;
   getAllClothing(): Promise<Clothing[]>;
+  getAvailableClothing(): Promise<Clothing[]>;
   getClothingByTagId(tagId: string): Promise<Clothing | undefined>;
   createClothing(clothing: InsertClothing): Promise<Clothing>;
   updateClothing(id: string, clothing: Partial<InsertClothing>): Promise<Clothing | undefined>;
   deleteClothing(id: string): Promise<boolean>;
   markClothingAsWorn(id: string): Promise<Clothing | undefined>;
+  toggleClothingLaundry(id: string): Promise<Clothing | undefined>;
 
   getOutfit(id: string): Promise<Outfit | undefined>;
   getAllOutfits(): Promise<Outfit[]>;
@@ -48,6 +50,10 @@ export class DatabaseStorage implements IStorage {
 
   async getAllClothing(): Promise<Clothing[]> {
     return db.select().from(clothing).orderBy(desc(clothing.createdAt));
+  }
+
+  async getAvailableClothing(): Promise<Clothing[]> {
+    return db.select().from(clothing).where(eq(clothing.inLaundry, 0)).orderBy(desc(clothing.createdAt));
   }
 
   async getClothingByTagId(tagId: string): Promise<Clothing | undefined> {
@@ -87,6 +93,20 @@ export class DatabaseStorage implements IStorage {
       .set({
         lastWorn: new Date(),
         timesWorn: existing.timesWorn + 1,
+      })
+      .where(eq(clothing.id, id))
+      .returning();
+    return item || undefined;
+  }
+
+  async toggleClothingLaundry(id: string): Promise<Clothing | undefined> {
+    const existing = await this.getClothing(id);
+    if (!existing) return undefined;
+
+    const [item] = await db
+      .update(clothing)
+      .set({
+        inLaundry: existing.inLaundry === 1 ? 0 : 1,
       })
       .where(eq(clothing.id, id))
       .returning();

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Plus, Search, Filter, Shirt, Package } from "lucide-react";
+import { Plus, Search, Shirt, Package, WashingMachine } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -13,6 +13,7 @@ export default function Wardrobe() {
   const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [showLaundry, setShowLaundry] = useState<"all" | "available" | "laundry">("all");
 
   const { data: clothes, isLoading } = useQuery<Clothing[]>({
     queryKey: ["/api/clothing"],
@@ -31,18 +32,23 @@ export default function Wardrobe() {
     const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          item.color.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === "all" || item.category === selectedCategory;
-    return matchesSearch && matchesCategory;
+    const matchesLaundry = showLaundry === "all" ||
+      (showLaundry === "available" && item.inLaundry === 0) ||
+      (showLaundry === "laundry" && item.inLaundry === 1);
+    return matchesSearch && matchesCategory && matchesLaundry;
   }) || [];
+
+  const laundryCount = clothes?.filter((item) => item.inLaundry === 1).length || 0;
+  const availableCount = clothes?.filter((item) => item.inLaundry === 0).length || 0;
 
   return (
     <div className="flex flex-col h-full bg-background">
-      {/* Header */}
       <div className="flex-shrink-0 p-4 space-y-4 bg-card border-b border-card-border">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-card-foreground">Wardrobe</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              {clothes?.length || 0} items
+              {availableCount} available, {laundryCount} in laundry
             </p>
           </div>
           <Button
@@ -54,7 +60,6 @@ export default function Wardrobe() {
           </Button>
         </div>
 
-        {/* Search Bar */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
@@ -67,7 +72,6 @@ export default function Wardrobe() {
           />
         </div>
 
-        {/* Category Filter */}
         <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1">
           {categories.map((category) => (
             <Badge
@@ -81,10 +85,37 @@ export default function Wardrobe() {
             </Badge>
           ))}
         </div>
+
+        <div className="flex gap-2">
+          <Badge
+            data-testid="filter-all-status"
+            variant={showLaundry === "all" ? "default" : "secondary"}
+            className="cursor-pointer px-3 py-2 h-auto hover-elevate active-elevate-2"
+            onClick={() => setShowLaundry("all")}
+          >
+            All Items
+          </Badge>
+          <Badge
+            data-testid="filter-available"
+            variant={showLaundry === "available" ? "default" : "secondary"}
+            className="cursor-pointer px-3 py-2 h-auto hover-elevate active-elevate-2"
+            onClick={() => setShowLaundry("available")}
+          >
+            Available ({availableCount})
+          </Badge>
+          <Badge
+            data-testid="filter-laundry"
+            variant={showLaundry === "laundry" ? "default" : "secondary"}
+            className="cursor-pointer px-3 py-2 h-auto hover-elevate active-elevate-2"
+            onClick={() => setShowLaundry("laundry")}
+          >
+            <WashingMachine className="w-3 h-3 mr-1" />
+            Laundry ({laundryCount})
+          </Badge>
+        </div>
       </div>
 
-      {/* Wardrobe Grid */}
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto p-4 pb-24">
         {isLoading ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {[...Array(8)].map((_, i) => (
@@ -101,14 +132,14 @@ export default function Wardrobe() {
           <div className="flex flex-col items-center justify-center h-full text-center p-8">
             <Shirt className="w-16 h-16 text-muted-foreground/50 mb-4" />
             <h2 className="text-xl font-semibold text-foreground mb-2">
-              {searchQuery || selectedCategory !== "all" ? "No items found" : "No clothes yet"}
+              {searchQuery || selectedCategory !== "all" || showLaundry !== "all" ? "No items found" : "No clothes yet"}
             </h2>
             <p className="text-sm text-muted-foreground mb-6 max-w-sm">
-              {searchQuery || selectedCategory !== "all"
+              {searchQuery || selectedCategory !== "all" || showLaundry !== "all"
                 ? "Try adjusting your search or filters"
                 : "Start scanning RFID tags to build your digital wardrobe"}
             </p>
-            {!searchQuery && selectedCategory === "all" && (
+            {!searchQuery && selectedCategory === "all" && showLaundry === "all" && (
               <Button
                 data-testid="button-scan-first"
                 onClick={() => setLocation("/scanner")}
@@ -124,10 +155,11 @@ export default function Wardrobe() {
               <Card
                 key={item.id}
                 data-testid={`card-clothing-${item.id}`}
-                className="overflow-hidden group cursor-pointer hover-elevate active-elevate-2"
+                className={`overflow-hidden group cursor-pointer hover-elevate active-elevate-2 ${
+                  item.inLaundry === 1 ? "opacity-75" : ""
+                }`}
                 onClick={() => setLocation(`/clothing/${item.id}`)}
               >
-                {/* Image */}
                 <div className="aspect-[3/4] bg-muted relative overflow-hidden">
                   {item.imageUrl ? (
                     <img
@@ -141,7 +173,14 @@ export default function Wardrobe() {
                     </div>
                   )}
                   
-                  {/* Hover Overlay */}
+                  {item.inLaundry === 1 && (
+                    <div className="absolute top-2 right-2">
+                      <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-100 text-xs">
+                        <WashingMachine className="w-3 h-3" />
+                      </Badge>
+                    </div>
+                  )}
+                  
                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-200 flex items-end justify-center p-3 opacity-0 group-hover:opacity-100">
                     <Badge variant="secondary" className="backdrop-blur-sm bg-background/90">
                       View Details
@@ -149,7 +188,6 @@ export default function Wardrobe() {
                   </div>
                 </div>
 
-                {/* Info */}
                 <div className="p-3 space-y-1">
                   <h3 className="font-medium text-base text-card-foreground truncate">
                     {item.name}

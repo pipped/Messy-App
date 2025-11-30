@@ -121,7 +121,18 @@ export default function Outfits() {
       return;
     }
 
-    const filtered = clothes.filter((item) => {
+    const availableClothes = clothes.filter((item) => item.inLaundry !== 1);
+    
+    if (availableClothes.length === 0) {
+      toast({
+        title: "All clothes in laundry",
+        description: "Mark some items as clean first!",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const filtered = availableClothes.filter((item) => {
       const matchesOccasion = occasion === "any" || item.occasion === occasion || item.occasion === "any";
       const matchesSeason = season === "all" || item.season === season || item.season === "all";
       return matchesOccasion && matchesSeason;
@@ -130,7 +141,7 @@ export default function Outfits() {
     if (filtered.length === 0) {
       toast({
         title: "No matching items",
-        description: "Try adjusting your filters",
+        description: "Try adjusting your filters or check laundry",
         variant: "destructive",
       });
       return;

@@ -97,6 +97,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Toggle laundry status
+  app.patch("/api/clothing/:id/laundry", async (req, res) => {
+    try {
+      const item = await storage.toggleClothingLaundry(req.params.id);
+      if (!item) {
+        return res.status(404).json({ error: "Clothing item not found" });
+      }
+      res.json(item);
+    } catch (error) {
+      console.error("Error toggling laundry status:", error);
+      res.status(500).json({ error: "Failed to toggle laundry status" });
+    }
+  });
+
+  // Get available clothing (not in laundry)
+  app.get("/api/clothing/available", async (_req, res) => {
+    try {
+      const items = await storage.getAvailableClothing();
+      res.json(items);
+    } catch (error) {
+      console.error("Error fetching available clothing:", error);
+      res.status(500).json({ error: "Failed to fetch available clothing" });
+    }
+  });
+
   // Delete clothing item
   app.delete("/api/clothing/:id", async (req, res) => {
     try {

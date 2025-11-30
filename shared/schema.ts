@@ -27,6 +27,7 @@ export const clothing = pgTable("clothing", {
   season: text("season").notNull(), // spring, summer, fall, winter, all
   occasion: text("occasion").notNull(), // casual, formal, athletic, business
   imageUrl: text("image_url"), // Optional photo of the item
+  inLaundry: integer("in_laundry").notNull().default(0), // 0 = available, 1 = in laundry
   lastWorn: timestamp("last_worn"), // Track when item was last worn
   timesWorn: integer("times_worn").notNull().default(0),
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
@@ -43,6 +44,7 @@ export const insertClothingSchema = createInsertSchema(clothing).omit({
   season: z.enum(["spring", "summer", "fall", "winter", "all"]),
   occasion: z.enum(["casual", "formal", "athletic", "business", "any"]),
   imageUrl: z.string().optional(),
+  inLaundry: z.number().default(0),
   lastWorn: z.coerce.date().optional(),
   timesWorn: z.number().default(0),
 });
