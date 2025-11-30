@@ -1,129 +1,447 @@
-import { User, Settings, Info, Heart } from "lucide-react";
+import { useState } from "react";
+import { User, TrendingUp, AlertTriangle, Shirt, Sun, Snowflake, Leaf, Cloud, BarChart3, Star, Calendar, WashingMachine } from "lucide-react";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQuery } from "@tanstack/react-query";
-import type { Clothing } from "@shared/schema";
+import { useLocation } from "wouter";
+import type { Clothing, Outfit } from "@shared/schema";
 
 export default function Profile() {
+  const [, setLocation] = useLocation();
+
   const { data: clothes } = useQuery<Clothing[]>({
     queryKey: ["/api/clothing"],
   });
 
-  // Compute real statistics from wardrobe data
-  const stats = {
-    totalItems: clothes?.length || 0,
-    topCategory: (() => {
-      if (!clothes || clothes.length === 0) return "None";
-      const categoryCounts = clothes.reduce((acc, item) => {
-        acc[item.category] = (acc[item.category] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
-      const topCat = Object.entries(categoryCounts).sort((a, b) => b[1] - a[1])[0];
-      return topCat ? topCat[0].charAt(0).toUpperCase() + topCat[0].slice(1) : "None";
-    })(),
-    mostWornColor: (() => {
-      if (!clothes || clothes.length === 0) return "None";
-      const colorWears = clothes.reduce((acc, item) => {
-        acc[item.color] = (acc[item.color] || 0) + item.timesWorn;
-        return acc;
-      }, {} as Record<string, number>);
-      const topColor = Object.entries(colorWears).sort((a, b) => b[1] - a[1])[0];
-      return topColor ? topColor[0] : "None";
-    })(),
-    avgWears: clothes?.length 
-      ? Math.round(clothes.reduce((sum, item) => sum + item.timesWorn, 0) / clothes.length)
-      : 0,
+  const { data: outfits } = useQuery<Outfit[]>({
+    queryKey: ["/api/outfits"],
+  });
+
+  const totalItems = clothes?.length || 0;
+  const totalOutfits = outfits?.length || 0;
+  const favoriteOutfits = outfits?.filter((o) => o.isFavorite === 1).length || 0;
+  const inLaundryCount = clothes?.filter((c) => c.inLaundry === 1).length || 0;
+
+  const totalWears = clothes?.reduce((sum, item) => sum + item.timesWorn, 0) || 0;
+  const avgWears = totalItems > 0 ? Math.round(totalWears / totalItems) : 0;
+
+  const mostWornItems = clothes
+    ? [...clothes].sort((a, b) => b.timesWorn - a.timesWorn).slice(0, 5)
+    : [];
+
+  const unusedItems = clothes
+    ? clothes.filter((item) => item.timesWorn === 0)
+    : [];
+
+  const neverWornCount = unusedItems.length;
+
+  const categoryStats = clothes?.reduce((acc, item) => {
+    acc[item.category] = (acc[item.category] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>) || {};
+
+  const categoryLabels: Record<string, string> = {
+    top: "Tops",
+    bottom: "Bottoms",
+    shoes: "Shoes",
+    outerwear: "Outerwear",
+    accessory: "Accessories",
   };
 
+  const maxCategoryCount = Math.max(...Object.values(categoryStats), 1);
+
+  const seasonStats = clothes?.reduce((acc, item) => {
+    acc[item.season] = (acc[item.season] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>) || {};
+
+  const seasonLabels: Record<string, { label: string; icon: typeof Sun }> = {
+    spring: { label: "Spring", icon: Leaf },
+    summer: { label: "Summer", icon: Sun },
+    fall: { label: "Fall", icon: Cloud },
+    winter: { label: "Winter", icon: Snowflake },
+    all: { label: "All Seasons", icon: Calendar },
+  };
+
+  const colorStats = clothes?.reduce((acc, item) => {
+    const color = item.color.toLowerCase();
+    acc[color] = (acc[color] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>) || {};
+
+  const topColors = Object.entries(colorStats)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5);
+
+  const occasionStats = clothes?.reduce((acc, item) => {
+    acc[item.occasion] = (acc[item.occasion] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>) || {};
+
+  const occasionLabels: Record<string, string> = {
+    casual: "Casual",
+    formal: "Formal",
+    athletic: "Athletic",
+    business: "Business",
+    any: "Any Occasion",
+  };
+
+  const outfitWearStats = outfits?.reduce((sum, outfit) => sum + outfit.timesWorn, 0) || 0;
+
   return (
-    <div className="min-h-screen bg-background pb-20">
-      {/* Header */}
-      <div className="bg-card border-b border-card-border p-6">
+    <div className="flex flex-col h-full bg-background">
+      <div className="flex-shrink-0 bg-card border-b border-card-border p-6">
         <div className="flex items-center gap-4">
           <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
             <User className="w-10 h-10 text-primary" />
           </div>
           <div className="flex-1">
-            <h1 className="text-2xl font-bold text-card-foreground">My Profile</h1>
-            <p className="text-sm text-muted-foreground mt-1">Wardrobe Manager</p>
+            <h1 className="text-2xl font-bold text-card-foreground">My Wardrobe</h1>
+            <p className="text-sm text-muted-foreground mt-1">Stats & Insights</p>
           </div>
         </div>
       </div>
 
-      {/* Stats Grid */}
-      <div className="p-4 space-y-4">
-        <h2 className="text-lg font-semibold text-foreground">Wardrobe Statistics</h2>
-        
-        <div className="grid grid-cols-2 gap-4">
-          <Card className="p-4 text-center">
-            <p className="text-3xl font-bold text-primary">{stats.totalItems}</p>
-            <p className="text-sm text-muted-foreground mt-1">Total Items</p>
+      <div className="flex-1 overflow-y-auto pb-24">
+        <div className="p-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <Card className="p-4 text-center" data-testid="stat-total-items">
+            <p className="text-3xl font-bold text-primary">{totalItems}</p>
+            <p className="text-xs text-muted-foreground mt-1">Total Items</p>
           </Card>
-          
-          <Card className="p-4 text-center">
-            <p className="text-3xl font-bold text-primary">{stats.avgWears}</p>
-            <p className="text-sm text-muted-foreground mt-1">Avg. Wears</p>
+          <Card className="p-4 text-center" data-testid="stat-avg-wears">
+            <p className="text-3xl font-bold text-primary">{avgWears}</p>
+            <p className="text-xs text-muted-foreground mt-1">Avg. Wears</p>
           </Card>
-          
-          <Card className="p-4 text-center">
-            <p className="text-lg font-semibold text-foreground">{stats.topCategory}</p>
-            <p className="text-sm text-muted-foreground mt-1">Top Category</p>
+          <Card className="p-4 text-center" data-testid="stat-outfits">
+            <p className="text-3xl font-bold text-primary">{totalOutfits}</p>
+            <p className="text-xs text-muted-foreground mt-1">Saved Outfits</p>
           </Card>
-          
-          <Card className="p-4 text-center">
-            <p className="text-lg font-semibold text-foreground">{stats.mostWornColor}</p>
-            <p className="text-sm text-muted-foreground mt-1">Favorite Color</p>
+          <Card className="p-4 text-center" data-testid="stat-laundry">
+            <p className="text-3xl font-bold text-amber-500">{inLaundryCount}</p>
+            <p className="text-xs text-muted-foreground mt-1">In Laundry</p>
           </Card>
         </div>
-      </div>
 
-      {/* Quick Actions */}
-      <div className="p-4 space-y-4">
-        <h2 className="text-lg font-semibold text-foreground">Quick Actions</h2>
-        
-        <div className="space-y-3">
-          <Card className="p-4 flex items-center gap-4 hover-elevate active-elevate-2 cursor-pointer">
-            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-              <Heart className="w-5 h-5 text-primary" />
-            </div>
-            <div className="flex-1">
-              <h3 className="font-medium text-foreground">Saved Outfits</h3>
-              <p className="text-sm text-muted-foreground">View your favorites</p>
-            </div>
-            <Badge variant="secondary">0</Badge>
-          </Card>
+        <div className="px-4">
+          <Tabs defaultValue="items" className="w-full">
+            <TabsList className="w-full grid grid-cols-3 mb-4">
+              <TabsTrigger value="items" data-testid="tab-items">
+                <Shirt className="w-4 h-4 mr-2" />
+                Items
+              </TabsTrigger>
+              <TabsTrigger value="outfits" data-testid="tab-outfits">
+                <Star className="w-4 h-4 mr-2" />
+                Outfits
+              </TabsTrigger>
+              <TabsTrigger value="analytics" data-testid="tab-analytics">
+                <BarChart3 className="w-4 h-4 mr-2" />
+                Analytics
+              </TabsTrigger>
+            </TabsList>
 
-          <Card className="p-4 flex items-center gap-4 hover-elevate active-elevate-2 cursor-pointer">
-            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-              <Settings className="w-5 h-5 text-primary" />
-            </div>
-            <div className="flex-1">
-              <h3 className="font-medium text-foreground">Settings</h3>
-              <p className="text-sm text-muted-foreground">Preferences & options</p>
-            </div>
-          </Card>
+            <TabsContent value="items" className="space-y-6">
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5 text-primary" />
+                  <h3 className="font-semibold text-foreground">Most Worn</h3>
+                </div>
+                {mostWornItems.length === 0 ? (
+                  <Card className="p-4 text-center">
+                    <p className="text-sm text-muted-foreground">No wear data yet</p>
+                  </Card>
+                ) : (
+                  <div className="space-y-2">
+                    {mostWornItems.map((item, index) => (
+                      <Card
+                        key={item.id}
+                        data-testid={`most-worn-${item.id}`}
+                        className="p-3 flex items-center gap-3 cursor-pointer hover-elevate active-elevate-2"
+                        onClick={() => setLocation(`/clothing/${item.id}`)}
+                      >
+                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary">
+                          {index + 1}
+                        </div>
+                        <div className="w-12 h-12 rounded-lg bg-muted overflow-hidden flex-shrink-0">
+                          {item.imageUrl ? (
+                            <img
+                              src={item.imageUrl}
+                              alt={item.name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Shirt className="w-6 h-6 text-muted-foreground/30" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-foreground truncate">{item.name}</p>
+                          <p className="text-xs text-muted-foreground capitalize">{item.category}</p>
+                        </div>
+                        <Badge variant="secondary" className="flex-shrink-0">
+                          {item.timesWorn}x
+                        </Badge>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </div>
 
-          <Card className="p-4 flex items-center gap-4 hover-elevate active-elevate-2 cursor-pointer">
-            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-              <Info className="w-5 h-5 text-primary" />
-            </div>
-            <div className="flex-1">
-              <h3 className="font-medium text-foreground">About</h3>
-              <p className="text-sm text-muted-foreground">App info & support</p>
-            </div>
-          </Card>
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5 text-amber-500" />
+                  <h3 className="font-semibold text-foreground">Never Worn</h3>
+                  {neverWornCount > 0 && (
+                    <Badge variant="outline" className="text-amber-600">
+                      {neverWornCount} items
+                    </Badge>
+                  )}
+                </div>
+                {unusedItems.length === 0 ? (
+                  <Card className="p-4 text-center">
+                    <p className="text-sm text-muted-foreground">All items have been worn</p>
+                  </Card>
+                ) : (
+                  <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+                    {unusedItems.slice(0, 12).map((item) => (
+                      <div
+                        key={item.id}
+                        data-testid={`unused-${item.id}`}
+                        className="aspect-square rounded-lg bg-muted overflow-hidden cursor-pointer hover-elevate active-elevate-2"
+                        onClick={() => setLocation(`/clothing/${item.id}`)}
+                      >
+                        {item.imageUrl ? (
+                          <img
+                            src={item.imageUrl}
+                            alt={item.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Shirt className="w-6 h-6 text-muted-foreground/30" />
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                    {unusedItems.length > 12 && (
+                      <div className="aspect-square rounded-lg bg-muted/50 flex items-center justify-center text-sm text-muted-foreground">
+                        +{unusedItems.length - 12}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <WashingMachine className="w-5 h-5 text-amber-500" />
+                  <h3 className="font-semibold text-foreground">In Laundry</h3>
+                </div>
+                {inLaundryCount === 0 ? (
+                  <Card className="p-4 text-center">
+                    <p className="text-sm text-muted-foreground">All items are clean</p>
+                  </Card>
+                ) : (
+                  <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+                    {clothes?.filter((c) => c.inLaundry === 1).slice(0, 12).map((item) => (
+                      <div
+                        key={item.id}
+                        data-testid={`laundry-${item.id}`}
+                        className="aspect-square rounded-lg bg-muted overflow-hidden cursor-pointer hover-elevate active-elevate-2 relative"
+                        onClick={() => setLocation(`/clothing/${item.id}`)}
+                      >
+                        {item.imageUrl ? (
+                          <img
+                            src={item.imageUrl}
+                            alt={item.name}
+                            className="w-full h-full object-cover opacity-75"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Shirt className="w-6 h-6 text-muted-foreground/30" />
+                          </div>
+                        )}
+                        <div className="absolute bottom-1 right-1">
+                          <WashingMachine className="w-3 h-3 text-amber-500" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="outfits" className="space-y-6">
+              <div className="grid grid-cols-2 gap-3">
+                <Card className="p-4 text-center">
+                  <p className="text-2xl font-bold text-primary">{favoriteOutfits}</p>
+                  <p className="text-xs text-muted-foreground mt-1">Favorites</p>
+                </Card>
+                <Card className="p-4 text-center">
+                  <p className="text-2xl font-bold text-primary">{outfitWearStats}</p>
+                  <p className="text-xs text-muted-foreground mt-1">Total Outfit Wears</p>
+                </Card>
+              </div>
+
+              <div className="space-y-3">
+                <h3 className="font-semibold text-foreground">Outfit History</h3>
+                {outfits && outfits.length > 0 ? (
+                  <div className="space-y-2">
+                    {outfits.slice(0, 5).map((outfit) => (
+                      <Card
+                        key={outfit.id}
+                        data-testid={`outfit-stat-${outfit.id}`}
+                        className="p-3 flex items-center gap-3"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium text-foreground truncate">{outfit.name}</p>
+                            {outfit.isFavorite === 1 && (
+                              <Star className="w-4 h-4 text-amber-500 fill-amber-500 flex-shrink-0" />
+                            )}
+                          </div>
+                          <div className="flex gap-2 mt-1">
+                            <Badge variant="outline" className="text-xs capitalize">
+                              {outfit.occasion}
+                            </Badge>
+                            <Badge variant="outline" className="text-xs capitalize">
+                              {outfit.season}
+                            </Badge>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-lg font-bold text-primary">{outfit.timesWorn}x</p>
+                          <p className="text-xs text-muted-foreground">worn</p>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <Card className="p-4 text-center">
+                    <p className="text-sm text-muted-foreground">No outfits saved yet</p>
+                  </Card>
+                )}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="analytics" className="space-y-6">
+              <div className="space-y-3">
+                <h3 className="font-semibold text-foreground">Category Breakdown</h3>
+                <Card className="p-4 space-y-3">
+                  {Object.entries(categoryStats).length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center">No items yet</p>
+                  ) : (
+                    Object.entries(categoryLabels).map(([key, label]) => {
+                      const count = categoryStats[key] || 0;
+                      const percent = maxCategoryCount > 0 ? (count / maxCategoryCount) * 100 : 0;
+                      return (
+                        <div key={key} className="space-y-1" data-testid={`category-${key}`}>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-foreground">{label}</span>
+                            <span className="text-muted-foreground">{count}</span>
+                          </div>
+                          <Progress value={percent} className="h-2" />
+                        </div>
+                      );
+                    })
+                  )}
+                </Card>
+              </div>
+
+              <div className="space-y-3">
+                <h3 className="font-semibold text-foreground">Seasonal Distribution</h3>
+                <div className="grid grid-cols-5 gap-2">
+                  {Object.entries(seasonLabels).map(([key, { label, icon: Icon }]) => {
+                    const count = seasonStats[key] || 0;
+                    return (
+                      <Card
+                        key={key}
+                        className="p-3 text-center"
+                        data-testid={`season-${key}`}
+                      >
+                        <Icon className="w-5 h-5 mx-auto text-primary mb-1" />
+                        <p className="text-lg font-bold text-foreground">{count}</p>
+                        <p className="text-xs text-muted-foreground truncate">{label}</p>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <h3 className="font-semibold text-foreground">Top Colors</h3>
+                {topColors.length === 0 ? (
+                  <Card className="p-4 text-center">
+                    <p className="text-sm text-muted-foreground">No color data</p>
+                  </Card>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {topColors.map(([color, count]) => (
+                      <Badge
+                        key={color}
+                        variant="outline"
+                        className="px-3 py-2 capitalize"
+                        data-testid={`color-${color}`}
+                      >
+                        {color}
+                        <span className="ml-2 text-muted-foreground">{count}</span>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-3">
+                <h3 className="font-semibold text-foreground">Occasion Split</h3>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {Object.entries(occasionLabels).map(([key, label]) => {
+                    const count = occasionStats[key] || 0;
+                    return (
+                      <Card
+                        key={key}
+                        className="p-3 text-center"
+                        data-testid={`occasion-${key}`}
+                      >
+                        <p className="text-xl font-bold text-primary">{count}</p>
+                        <p className="text-xs text-muted-foreground">{label}</p>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <h3 className="font-semibold text-foreground">Wardrobe Health</h3>
+                <Card className="p-4 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-foreground">Item Utilization</span>
+                    <span className="text-sm font-medium text-primary">
+                      {totalItems > 0 ? Math.round(((totalItems - neverWornCount) / totalItems) * 100) : 0}%
+                    </span>
+                  </div>
+                  <Progress
+                    value={totalItems > 0 ? ((totalItems - neverWornCount) / totalItems) * 100 : 0}
+                    className="h-2"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {totalItems - neverWornCount} of {totalItems} items have been worn
+                  </p>
+                </Card>
+              </div>
+            </TabsContent>
+          </Tabs>
         </div>
-      </div>
 
-      {/* App Info */}
-      <div className="p-4 pt-8 text-center">
-        <p className="text-xs text-muted-foreground">
-          Wardrobe Manager v1.0.0
-        </p>
-        <p className="text-xs text-muted-foreground mt-1">
-          RFID-powered clothing organization
-        </p>
+        <div className="p-4 pt-8 text-center">
+          <p className="text-xs text-muted-foreground">
+            Wardrobe Manager v1.0.0
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            RFID-powered clothing organization
+          </p>
+        </div>
       </div>
     </div>
   );
