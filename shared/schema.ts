@@ -57,6 +57,8 @@ export const outfits = pgTable("outfits", {
   clothingIds: text("clothing_ids").array().notNull(), // Array of clothing item IDs
   occasion: text("occasion").notNull(),
   season: text("season").notNull(),
+  isFavorite: integer("is_favorite").notNull().default(0), // 0 = false, 1 = true
+  lastWorn: timestamp("last_worn"),
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
   timesWorn: integer("times_worn").notNull().default(0),
 });
@@ -69,6 +71,8 @@ export const insertOutfitSchema = createInsertSchema(outfits).omit({
   clothingIds: z.array(z.string()).min(1, "At least one clothing item required"),
   occasion: z.string().min(1, "Occasion is required"),
   season: z.string().min(1, "Season is required"),
+  isFavorite: z.number().default(0),
+  lastWorn: z.coerce.date().optional(),
   timesWorn: z.number().default(0),
 });
 

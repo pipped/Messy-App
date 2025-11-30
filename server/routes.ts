@@ -153,6 +153,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get favorite outfits
+  app.get("/api/outfits/favorites", async (_req, res) => {
+    try {
+      const favorites = await storage.getFavoriteOutfits();
+      res.json(favorites);
+    } catch (error) {
+      console.error("Error fetching favorite outfits:", error);
+      res.status(500).json({ error: "Failed to fetch favorite outfits" });
+    }
+  });
+
+  // Toggle outfit favorite status
+  app.patch("/api/outfits/:id/favorite", async (req, res) => {
+    try {
+      const outfit = await storage.toggleOutfitFavorite(req.params.id);
+      if (!outfit) {
+        return res.status(404).json({ error: "Outfit not found" });
+      }
+      res.json(outfit);
+    } catch (error) {
+      console.error("Error toggling outfit favorite:", error);
+      res.status(500).json({ error: "Failed to toggle outfit favorite" });
+    }
+  });
+
+  // Mark outfit as worn
+  app.patch("/api/outfits/:id/worn", async (req, res) => {
+    try {
+      const outfit = await storage.markOutfitAsWorn(req.params.id);
+      if (!outfit) {
+        return res.status(404).json({ error: "Outfit not found" });
+      }
+      res.json(outfit);
+    } catch (error) {
+      console.error("Error marking outfit as worn:", error);
+      res.status(500).json({ error: "Failed to mark outfit as worn" });
+    }
+  });
+
   // Delete outfit
   app.delete("/api/outfits/:id", async (req, res) => {
     try {

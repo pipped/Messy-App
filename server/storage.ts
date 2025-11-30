@@ -17,7 +17,11 @@ export interface IStorage {
 
   getOutfit(id: string): Promise<Outfit | undefined>;
   getAllOutfits(): Promise<Outfit[]>;
+  getFavoriteOutfits(): Promise<Outfit[]>;
   createOutfit(outfit: InsertOutfit): Promise<Outfit>;
+  updateOutfit(id: string, updates: Partial<InsertOutfit>): Promise<Outfit | undefined>;
+  toggleOutfitFavorite(id: string): Promise<Outfit | undefined>;
+  markOutfitAsWorn(id: string): Promise<Outfit | undefined>;
   deleteOutfit(id: string): Promise<boolean>;
 }
 
@@ -98,9 +102,54 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(outfits).orderBy(desc(outfits.createdAt));
   }
 
+  async getFavoriteOutfits(): Promise<Outfit[]> {
+    return db.select().from(outfits).where(eq(outfits.isFavorite, 1)).orderBy(desc(outfits.createdAt));
+  }
+
   async createOutfit(insertOutfit: InsertOutfit): Promise<Outfit> {
-    const [outfit] = await db.insert(outfits).values(insertOutfit).returning();
+    const [outfit] = await db.insert(outfits).values({
+      ...insertOutfit,
+      lastWorn: insertOutfit.lastWorn || null,
+    }).returning();
     return outfit;
+  }
+
+  async updateOutfit(id: string, updates: Partial<InsertOutfit>): Promise<Outfit | undefined> {
+    const [outfit] = await db
+      .update(outfits)
+      .set(updates)
+      .where(eq(outfits.id, id))
+      .returning();
+    return outfit || undefined;
+  }
+
+  async toggleOutfitFavorite(id: string): Promise<Outfit | undefined> {
+    const existing = await this.getOutfit(id);
+    if (!existing) return undefined;
+
+    const [outfit] = await db
+      .update(outfits)
+      .set({
+        isFavorite: existing.isFavorite === 1 ? 0 : 1,
+      })
+      .where(eq(outfits.id, id))
+      .returning();
+    return outfit || undefined;
+  }
+
+  async markOutfitAsWorn(id: string): Promise<Outfit | undefined> {
+    const existing = await this.getOutfit(id);
+    if (!existing) return undefined;
+
+    const [outfit] = await db
+      .update(outfits)
+      .set({
+        lastWorn: new Date(),
+        timesWorn: existing.timesWorn + 1,
+      })
+      .where(eq(outfits.id, id))
+      .returning();
+    return outfit || undefined;
   }
 
   async deleteOutfit(id: string): Promise<boolean> {
