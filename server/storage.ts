@@ -1,13 +1,12 @@
-import { type User, type InsertUser, type Clothing, type InsertClothing, type Outfit, type InsertOutfit } from "@shared/schema";
-import { randomUUID } from "crypto";
+import { type User, type InsertUser, type Clothing, type InsertClothing, type Outfit, type InsertOutfit, users, clothing, outfits } from "@shared/schema";
+import { db } from "./db";
+import { eq, desc } from "drizzle-orm";
 
 export interface IStorage {
-  // User methods
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
 
-  // Clothing methods
   getClothing(id: string): Promise<Clothing | undefined>;
   getAllClothing(): Promise<Clothing[]>;
   getClothingByTagId(tagId: string): Promise<Clothing | undefined>;
@@ -16,289 +15,129 @@ export interface IStorage {
   deleteClothing(id: string): Promise<boolean>;
   markClothingAsWorn(id: string): Promise<Clothing | undefined>;
 
-  // Outfit methods
   getOutfit(id: string): Promise<Outfit | undefined>;
   getAllOutfits(): Promise<Outfit[]>;
   createOutfit(outfit: InsertOutfit): Promise<Outfit>;
   deleteOutfit(id: string): Promise<boolean>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<string, User>;
-  private clothing: Map<string, Clothing>;
-  private outfits: Map<string, Outfit>;
-
-  constructor() {
-    this.users = new Map();
-    this.clothing = new Map();
-    this.outfits = new Map();
-
-    // Add some sample clothing items for demo
-    this.seedSampleData();
-  }
-
-  private seedSampleData() {
-    const sampleClothes: InsertClothing[] = [
-      // Tops
-      {
-        tagId: "TAG-DEMO-001",
-        name: "Classic White T-Shirt",
-        category: "top",
-        color: "White",
-        season: "all",
-        occasion: "casual",
-        timesWorn: 5,
-      },
-      {
-        tagId: "TAG-DEMO-006",
-        name: "Black V-Neck Tee",
-        category: "top",
-        color: "Black",
-        season: "all",
-        occasion: "casual",
-        timesWorn: 3,
-      },
-      {
-        tagId: "TAG-DEMO-007",
-        name: "Striped Button-Down",
-        category: "top",
-        color: "Blue",
-        season: "all",
-        occasion: "business",
-        timesWorn: 7,
-      },
-      {
-        tagId: "TAG-DEMO-008",
-        name: "Gray Hoodie",
-        category: "top",
-        color: "Gray",
-        season: "fall",
-        occasion: "casual",
-        timesWorn: 9,
-      },
-      // Bottoms
-      {
-        tagId: "TAG-DEMO-002",
-        name: "Blue Denim Jeans",
-        category: "bottom",
-        color: "Blue",
-        season: "all",
-        occasion: "casual",
-        timesWorn: 8,
-      },
-      {
-        tagId: "TAG-DEMO-009",
-        name: "Black Chinos",
-        category: "bottom",
-        color: "Black",
-        season: "all",
-        occasion: "business",
-        timesWorn: 4,
-      },
-      {
-        tagId: "TAG-DEMO-010",
-        name: "Khaki Shorts",
-        category: "bottom",
-        color: "Khaki",
-        season: "summer",
-        occasion: "casual",
-        timesWorn: 6,
-      },
-      // Shoes
-      {
-        tagId: "TAG-DEMO-004",
-        name: "White Sneakers",
-        category: "shoes",
-        color: "White",
-        season: "all",
-        occasion: "casual",
-        timesWorn: 12,
-      },
-      {
-        tagId: "TAG-DEMO-011",
-        name: "Brown Loafers",
-        category: "shoes",
-        color: "Brown",
-        season: "all",
-        occasion: "business",
-        timesWorn: 2,
-      },
-      {
-        tagId: "TAG-DEMO-012",
-        name: "Running Shoes",
-        category: "shoes",
-        color: "Gray",
-        season: "all",
-        occasion: "athletic",
-        timesWorn: 15,
-      },
-      // Outerwear
-      {
-        tagId: "TAG-DEMO-003",
-        name: "Black Leather Jacket",
-        category: "outerwear",
-        color: "Black",
-        season: "fall",
-        occasion: "casual",
-        timesWorn: 3,
-      },
-      {
-        tagId: "TAG-DEMO-005",
-        name: "Navy Blazer",
-        category: "outerwear",
-        color: "Navy",
-        season: "all",
-        occasion: "business",
-        timesWorn: 2,
-      },
-      {
-        tagId: "TAG-DEMO-013",
-        name: "Denim Jacket",
-        category: "outerwear",
-        color: "Blue",
-        season: "spring",
-        occasion: "casual",
-        timesWorn: 5,
-      },
-      // Accessories
-      {
-        tagId: "TAG-DEMO-014",
-        name: "Leather Belt",
-        category: "accessory",
-        color: "Brown",
-        season: "all",
-        occasion: "any",
-        timesWorn: 10,
-      },
-      {
-        tagId: "TAG-DEMO-015",
-        name: "Sunglasses",
-        category: "accessory",
-        color: "Black",
-        season: "summer",
-        occasion: "any",
-        timesWorn: 8,
-      },
-    ];
-
-    sampleClothes.forEach((item) => {
-      const id = randomUUID();
-      const clothing: Clothing = {
-        ...item,
-        id,
-        imageUrl: null,
-        lastWorn: null,
-        createdAt: new Date(),
-      };
-      this.clothing.set(id, clothing);
-    });
-  }
-
-  // User methods
+export class DatabaseStorage implements IStorage {
   async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user || undefined;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user || undefined;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
+    const [user] = await db.insert(users).values(insertUser).returning();
     return user;
   }
 
-  // Clothing methods
   async getClothing(id: string): Promise<Clothing | undefined> {
-    return this.clothing.get(id);
+    const [item] = await db.select().from(clothing).where(eq(clothing.id, id));
+    return item || undefined;
   }
 
   async getAllClothing(): Promise<Clothing[]> {
-    return Array.from(this.clothing.values()).sort(
-      (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
-    );
+    return db.select().from(clothing).orderBy(desc(clothing.createdAt));
   }
 
   async getClothingByTagId(tagId: string): Promise<Clothing | undefined> {
-    return Array.from(this.clothing.values()).find(
-      (item) => item.tagId === tagId
-    );
+    const [item] = await db.select().from(clothing).where(eq(clothing.tagId, tagId));
+    return item || undefined;
   }
 
   async createClothing(insertClothing: InsertClothing): Promise<Clothing> {
-    const id = randomUUID();
-    const clothing: Clothing = {
+    const [item] = await db.insert(clothing).values({
       ...insertClothing,
-      id,
       imageUrl: insertClothing.imageUrl || null,
       lastWorn: insertClothing.lastWorn || null,
-      createdAt: new Date(),
-    };
-    this.clothing.set(id, clothing);
-    return clothing;
+    }).returning();
+    return item;
   }
 
-  async updateClothing(
-    id: string,
-    updates: Partial<InsertClothing>
-  ): Promise<Clothing | undefined> {
-    const existing = this.clothing.get(id);
-    if (!existing) return undefined;
-
-    const updated: Clothing = {
-      ...existing,
-      ...updates,
-    };
-    this.clothing.set(id, updated);
-    return updated;
+  async updateClothing(id: string, updates: Partial<InsertClothing>): Promise<Clothing | undefined> {
+    const [item] = await db
+      .update(clothing)
+      .set(updates)
+      .where(eq(clothing.id, id))
+      .returning();
+    return item || undefined;
   }
 
   async deleteClothing(id: string): Promise<boolean> {
-    return this.clothing.delete(id);
+    const result = await db.delete(clothing).where(eq(clothing.id, id)).returning();
+    return result.length > 0;
   }
 
   async markClothingAsWorn(id: string): Promise<Clothing | undefined> {
-    const item = this.clothing.get(id);
-    if (!item) return undefined;
+    const existing = await this.getClothing(id);
+    if (!existing) return undefined;
 
-    const updated: Clothing = {
-      ...item,
-      lastWorn: new Date(),
-      timesWorn: item.timesWorn + 1,
-    };
-    this.clothing.set(id, updated);
-    return updated;
+    const [item] = await db
+      .update(clothing)
+      .set({
+        lastWorn: new Date(),
+        timesWorn: existing.timesWorn + 1,
+      })
+      .where(eq(clothing.id, id))
+      .returning();
+    return item || undefined;
   }
 
-  // Outfit methods
   async getOutfit(id: string): Promise<Outfit | undefined> {
-    return this.outfits.get(id);
+    const [outfit] = await db.select().from(outfits).where(eq(outfits.id, id));
+    return outfit || undefined;
   }
 
   async getAllOutfits(): Promise<Outfit[]> {
-    return Array.from(this.outfits.values()).sort(
-      (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
-    );
+    return db.select().from(outfits).orderBy(desc(outfits.createdAt));
   }
 
   async createOutfit(insertOutfit: InsertOutfit): Promise<Outfit> {
-    const id = randomUUID();
-    const outfit: Outfit = {
-      ...insertOutfit,
-      id,
-      createdAt: new Date(),
-    };
-    this.outfits.set(id, outfit);
+    const [outfit] = await db.insert(outfits).values(insertOutfit).returning();
     return outfit;
   }
 
   async deleteOutfit(id: string): Promise<boolean> {
-    return this.outfits.delete(id);
+    const result = await db.delete(outfits).where(eq(outfits.id, id)).returning();
+    return result.length > 0;
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
+
+export async function seedDatabaseIfEmpty(): Promise<void> {
+  const existingItems = await db.select().from(clothing).limit(1);
+  if (existingItems.length > 0) {
+    console.log("Database already has clothing items, skipping seed.");
+    return;
+  }
+
+  console.log("Seeding database with sample clothing items...");
+
+  const sampleClothes: InsertClothing[] = [
+    { tagId: "TAG-DEMO-001", name: "Classic White T-Shirt", category: "top", color: "White", season: "all", occasion: "casual", timesWorn: 5 },
+    { tagId: "TAG-DEMO-006", name: "Black V-Neck Tee", category: "top", color: "Black", season: "all", occasion: "casual", timesWorn: 3 },
+    { tagId: "TAG-DEMO-007", name: "Striped Button-Down", category: "top", color: "Blue", season: "all", occasion: "business", timesWorn: 7 },
+    { tagId: "TAG-DEMO-008", name: "Gray Hoodie", category: "top", color: "Gray", season: "fall", occasion: "casual", timesWorn: 9 },
+    { tagId: "TAG-DEMO-002", name: "Blue Denim Jeans", category: "bottom", color: "Blue", season: "all", occasion: "casual", timesWorn: 8 },
+    { tagId: "TAG-DEMO-009", name: "Black Chinos", category: "bottom", color: "Black", season: "all", occasion: "business", timesWorn: 4 },
+    { tagId: "TAG-DEMO-010", name: "Khaki Shorts", category: "bottom", color: "Khaki", season: "summer", occasion: "casual", timesWorn: 6 },
+    { tagId: "TAG-DEMO-004", name: "White Sneakers", category: "shoes", color: "White", season: "all", occasion: "casual", timesWorn: 12 },
+    { tagId: "TAG-DEMO-011", name: "Brown Loafers", category: "shoes", color: "Brown", season: "all", occasion: "business", timesWorn: 2 },
+    { tagId: "TAG-DEMO-012", name: "Running Shoes", category: "shoes", color: "Gray", season: "all", occasion: "athletic", timesWorn: 15 },
+    { tagId: "TAG-DEMO-003", name: "Black Leather Jacket", category: "outerwear", color: "Black", season: "fall", occasion: "casual", timesWorn: 3 },
+    { tagId: "TAG-DEMO-005", name: "Navy Blazer", category: "outerwear", color: "Navy", season: "all", occasion: "business", timesWorn: 2 },
+    { tagId: "TAG-DEMO-013", name: "Denim Jacket", category: "outerwear", color: "Blue", season: "spring", occasion: "casual", timesWorn: 5 },
+    { tagId: "TAG-DEMO-014", name: "Leather Belt", category: "accessory", color: "Brown", season: "all", occasion: "any", timesWorn: 10 },
+    { tagId: "TAG-DEMO-015", name: "Sunglasses", category: "accessory", color: "Black", season: "summer", occasion: "any", timesWorn: 8 },
+  ];
+
+  await db.insert(clothing).values(sampleClothes);
+  console.log(`Seeded ${sampleClothes.length} sample clothing items.`);
+}

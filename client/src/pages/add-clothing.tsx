@@ -248,7 +248,7 @@ export default function AddClothing() {
             />
 
             {/* Submit */}
-            <div className="pt-4">
+            <div className="pt-4 pb-24">
               <Button
                 data-testid="button-submit"
                 type="submit"
