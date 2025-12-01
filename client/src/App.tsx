@@ -9,6 +9,7 @@ import Wardrobe from "@/pages/wardrobe";
 import Outfits from "@/pages/outfits";
 import Profile from "@/pages/profile";
 import AddClothing from "@/pages/add-clothing";
+import EditClothing from "@/pages/edit-clothing";
 import ClothingDetail from "@/pages/clothing-detail";
 import NotFound from "@/pages/not-found";
 
@@ -23,6 +24,7 @@ function Router() {
         <Route path="/profile" component={Profile} />
         <Route path="/add" component={AddClothing} />
         <Route path="/clothing/:id" component={ClothingDetail} />
+        <Route path="/clothing/:id/edit" component={EditClothing} />
         <Route component={NotFound} />
       </Switch>
       <BottomNav />

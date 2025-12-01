@@ -62,8 +62,10 @@ export default function ClothingDetail() {
   });
 
   const toggleLaundryMutation = useMutation({
-    mutationFn: () =>
-      apiRequest("PATCH", `/api/clothing/${id}/laundry`, undefined),
+    mutationFn: async () => {
+      const res = await apiRequest("PATCH", `/api/clothing/${id}/laundry`, undefined);
+      return res.json() as Promise<Clothing>;
+    },
     onSuccess: (data: Clothing) => {
       queryClient.invalidateQueries({ queryKey: ["/api/clothing", id] });
       queryClient.invalidateQueries({ queryKey: ["/api/clothing"] });
@@ -120,7 +122,7 @@ export default function ClothingDetail() {
               data-testid="button-edit"
               variant="ghost"
               size="icon"
-              onClick={() => toast({ title: "Edit feature", description: "Coming soon!" })}
+              onClick={() => setLocation(`/clothing/${id}/edit`)}
             >
               <Pencil className="w-5 h-5" />
             </Button>
