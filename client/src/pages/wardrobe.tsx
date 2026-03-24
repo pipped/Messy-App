@@ -49,7 +49,7 @@ export default function Wardrobe() {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-xs font-medium text-muted-foreground mb-0.5">
-              {user ? `Hey, ${user.split(" ")[0]}` : "Your"}
+              {user ? `Hey, ${user.username.split(" ")[0]}` : "Your"}
             </p>
             <h1 className="text-3xl font-black tracking-tight text-card-foreground">Wardrobe</h1>
             <p className="text-xs text-muted-foreground mt-1">

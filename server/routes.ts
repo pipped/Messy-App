@@ -298,6 +298,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Auth Routes
+  app.post("/api/auth/register", async (req, res) => {
+    try {
+      const { username, password } = req.body;
+      if (!username || !password) {
+        return res.status(400).json({ error: "Username and password are required" });
+      }
+      const existing = await storage.getUserByUsername(username.trim());
+      if (existing) {
+        return res.status(409).json({ error: "Username already taken" });
+      }
+      const user = await storage.createUser({ username: username.trim(), password });
+      res.status(201).json({ id: user.id, username: user.username });
+    } catch (error) {
+      console.error("Error registering user:", error);
+      res.status(500).json({ error: "Failed to register" });
+    }
+  });
+
+  app.post("/api/auth/login", async (req, res) => {
+    try {
+      const { username, password } = req.body;
+      if (!username || !password) {
+        return res.status(400).json({ error: "Username and password are required" });
+      }
+      const user = await storage.getUserByUsername(username.trim());
+      if (!user || user.password !== password) {
+        return res.status(401).json({ error: "Invalid username or password" });
+      }
+      res.json({ id: user.id, username: user.username });
+    } catch (error) {
+      console.error("Error logging in:", error);
+      res.status(500).json({ error: "Failed to login" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;

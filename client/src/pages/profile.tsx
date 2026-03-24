@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { User, TrendingUp, AlertTriangle, Shirt, Sun, Snowflake, Leaf, Cloud, BarChart3, Star, Calendar, WashingMachine, Wind, LogOut } from "lucide-react";
+import { useState, useRef } from "react";
+import { User, TrendingUp, AlertTriangle, Shirt, Sun, Snowflake, Leaf, Cloud, BarChart3, Star, Calendar, WashingMachine, Wind, LogOut, Camera } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,19 @@ const seasonOptions: { id: Season; label: string; icon: typeof Leaf }[] = [
 
 export default function Profile() {
   const [, setLocation] = useLocation();
-  const { user, logout, season, setSeason } = useTheme();
+  const { user, logout, season, setSeason, updateProfilePicture } = useTheme();
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const handlePfpChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      updateProfilePicture(ev.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
 
   const { data: clothes } = useQuery<Clothing[]>({
     queryKey: ["/api/clothing"],
@@ -100,18 +112,41 @@ export default function Profile() {
 
   const outfitWearStats = outfits?.reduce((sum, outfit) => sum + outfit.timesWorn, 0) || 0;
 
-  const initials = user ? user.slice(0, 2).toUpperCase() : "??";
+  const initials = user ? user.username.slice(0, 2).toUpperCase() : "??";
 
   return (
     <div className="flex flex-col h-full bg-background">
       {/* Header */}
       <div className="flex-shrink-0 bg-card border-b border-card-border">
         <div className="p-5 flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-primary flex items-center justify-center flex-shrink-0">
-            <span className="text-lg font-bold text-primary-foreground">{initials}</span>
+          {/* Avatar with edit button */}
+          <div className="relative flex-shrink-0">
+            <button
+              data-testid="button-change-pfp"
+              onClick={() => fileRef.current?.click()}
+              className="relative group"
+            >
+              <div className="w-14 h-14 rounded-2xl bg-primary overflow-hidden flex items-center justify-center">
+                {user?.profilePicture ? (
+                  <img src={user.profilePicture} alt="Profile" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-lg font-bold text-primary-foreground">{initials}</span>
+                )}
+              </div>
+              <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-card border border-border flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <Camera className="w-2.5 h-2.5 text-muted-foreground" />
+              </div>
+            </button>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handlePfpChange}
+            />
           </div>
           <div className="flex-1 min-w-0">
-            <h1 className="text-xl font-bold text-card-foreground truncate">{user}</h1>
+            <h1 className="text-xl font-bold text-card-foreground truncate">{user?.username}</h1>
             <p className="text-xs text-muted-foreground mt-0.5">Stats & Insights</p>
           </div>
           <Button
