@@ -1,5 +1,7 @@
 import { type User, type InsertUser, type Clothing, type InsertClothing, type Outfit, type InsertOutfit } from "@shared/schema";
-import { randomUUID } from "crypto";
+import Database from "better-sqlite3";
+import path from "path";
+import fs from "fs";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -26,215 +28,269 @@ export interface IStorage {
   deleteOutfit(id: string): Promise<boolean>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<string, User> = new Map();
-  private clothingItems: Map<string, Clothing> = new Map();
-  private outfitItems: Map<string, Outfit> = new Map();
+// ── helpers to map SQLite rows ↔ domain types ─────────────────────────────────
 
-  constructor() {
-    this.seedData();
+function rowToClothing(row: any): Clothing {
+  return {
+    id: row.id,
+    tagId: row.tag_id,
+    name: row.name,
+    category: row.category,
+    color: row.color,
+    season: row.season,
+    occasion: row.occasion,
+    imageUrl: row.image_url ?? null,
+    inLaundry: row.in_laundry,
+    lastWorn: row.last_worn ? new Date(row.last_worn) : null,
+    timesWorn: row.times_worn,
+    createdAt: new Date(row.created_at),
+  };
+}
+
+function rowToOutfit(row: any): Outfit {
+  return {
+    id: row.id,
+    name: row.name,
+    clothingIds: JSON.parse(row.clothing_ids ?? "[]"),
+    occasion: row.occasion,
+    season: row.season,
+    isFavorite: row.is_favorite,
+    lastWorn: row.last_worn ? new Date(row.last_worn) : null,
+    timesWorn: row.times_worn,
+    createdAt: new Date(row.created_at),
+  };
+}
+
+function rowToUser(row: any): User {
+  return { id: row.id, username: row.username, password: row.password };
+}
+
+// ── SqliteStorage ─────────────────────────────────────────────────────────────
+
+export class SqliteStorage implements IStorage {
+  private db: Database.Database;
+
+  constructor(dbPath: string) {
+    fs.mkdirSync(path.dirname(dbPath), { recursive: true });
+    this.db = new Database(dbPath);
+    this.db.pragma("journal_mode = WAL");
+    this.init();
   }
 
-  private seedData() {
-    const sampleClothes: InsertClothing[] = [
-      { tagId: "TAG-DEMO-001", name: "Classic White T-Shirt", category: "top", color: "White", season: "all", occasion: "casual", timesWorn: 5 },
-      { tagId: "TAG-DEMO-006", name: "Black V-Neck Tee", category: "top", color: "Black", season: "all", occasion: "casual", timesWorn: 3 },
-      { tagId: "TAG-DEMO-007", name: "Striped Button-Down", category: "top", color: "Blue", season: "all", occasion: "business", timesWorn: 7 },
-      { tagId: "TAG-DEMO-008", name: "Gray Hoodie", category: "top", color: "Gray", season: "fall", occasion: "casual", timesWorn: 9 },
-      { tagId: "TAG-DEMO-002", name: "Blue Denim Jeans", category: "bottom", color: "Blue", season: "all", occasion: "casual", timesWorn: 8 },
-      { tagId: "TAG-DEMO-009", name: "Black Chinos", category: "bottom", color: "Black", season: "all", occasion: "business", timesWorn: 4 },
-      { tagId: "TAG-DEMO-010", name: "Khaki Shorts", category: "bottom", color: "Khaki", season: "summer", occasion: "casual", timesWorn: 6 },
-      { tagId: "TAG-DEMO-004", name: "White Sneakers", category: "shoes", color: "White", season: "all", occasion: "casual", timesWorn: 12 },
-      { tagId: "TAG-DEMO-011", name: "Brown Loafers", category: "shoes", color: "Brown", season: "all", occasion: "business", timesWorn: 2 },
-      { tagId: "TAG-DEMO-012", name: "Running Shoes", category: "shoes", color: "Gray", season: "all", occasion: "athletic", timesWorn: 15 },
-      { tagId: "TAG-DEMO-003", name: "Black Leather Jacket", category: "outerwear", color: "Black", season: "fall", occasion: "casual", timesWorn: 3, inLaundry: 1 },
-      { tagId: "TAG-DEMO-005", name: "Navy Blazer", category: "outerwear", color: "Navy", season: "all", occasion: "business", timesWorn: 2 },
-      { tagId: "TAG-DEMO-013", name: "Denim Jacket", category: "outerwear", color: "Blue", season: "spring", occasion: "casual", timesWorn: 5 },
-      { tagId: "TAG-DEMO-014", name: "Leather Belt", category: "accessory", color: "Brown", season: "all", occasion: "any", timesWorn: 10 },
-      { tagId: "TAG-DEMO-015", name: "Sunglasses", category: "accessory", color: "Black", season: "summer", occasion: "any", timesWorn: 8 },
-    ];
+  private init() {
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS users (
+        id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-4' || substr(lower(hex(randomblob(2))),2) || '-' || substr('89ab',abs(random()) % 4 + 1, 1) || substr(lower(hex(randomblob(2))),2) || '-' || lower(hex(randomblob(6)))),
+        username TEXT NOT NULL UNIQUE,
+        password TEXT NOT NULL
+      );
 
-    const now = new Date();
-    for (const c of sampleClothes) {
-      const id = randomUUID();
-      this.clothingItems.set(id, {
-        id,
-        tagId: c.tagId,
-        name: c.name,
-        category: c.category,
-        color: c.color,
-        season: c.season,
-        occasion: c.occasion,
-        imageUrl: c.imageUrl ?? null,
-        inLaundry: c.inLaundry ?? 0,
-        lastWorn: c.lastWorn ?? null,
-        timesWorn: c.timesWorn ?? 0,
-        createdAt: now,
-      });
-    }
+      CREATE TABLE IF NOT EXISTS clothing (
+        id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-4' || substr(lower(hex(randomblob(2))),2) || '-' || substr('89ab',abs(random()) % 4 + 1, 1) || substr(lower(hex(randomblob(2))),2) || '-' || lower(hex(randomblob(6)))),
+        tag_id TEXT NOT NULL UNIQUE,
+        name TEXT NOT NULL,
+        category TEXT NOT NULL,
+        color TEXT NOT NULL,
+        season TEXT NOT NULL,
+        occasion TEXT NOT NULL,
+        image_url TEXT,
+        in_laundry INTEGER NOT NULL DEFAULT 0,
+        last_worn TEXT,
+        times_worn INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+
+      CREATE TABLE IF NOT EXISTS outfits (
+        id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-4' || substr(lower(hex(randomblob(2))),2) || '-' || substr('89ab',abs(random()) % 4 + 1, 1) || substr(lower(hex(randomblob(2))),2) || '-' || lower(hex(randomblob(6)))),
+        name TEXT NOT NULL,
+        clothing_ids TEXT NOT NULL DEFAULT '[]',
+        occasion TEXT NOT NULL,
+        season TEXT NOT NULL,
+        is_favorite INTEGER NOT NULL DEFAULT 0,
+        last_worn TEXT,
+        times_worn INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+    `);
   }
+
+  // ── Users ──────────────────────────────────────────────────────────────────
 
   async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
+    const row = this.db.prepare("SELECT * FROM users WHERE id = ?").get(id);
+    return row ? rowToUser(row) : undefined;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(u => u.username === username);
+    const row = this.db.prepare("SELECT * FROM users WHERE username = ?").get(username);
+    return row ? rowToUser(row) : undefined;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const user: User = { id, ...insertUser };
-    this.users.set(id, user);
-    return user;
+    const id = crypto.randomUUID();
+    this.db.prepare("INSERT INTO users (id, username, password) VALUES (?, ?, ?)").run(id, insertUser.username, insertUser.password);
+    return { id, username: insertUser.username, password: insertUser.password };
   }
 
+  // ── Clothing ───────────────────────────────────────────────────────────────
+
   async getClothing(id: string): Promise<Clothing | undefined> {
-    return this.clothingItems.get(id);
+    const row = this.db.prepare("SELECT * FROM clothing WHERE id = ?").get(id);
+    return row ? rowToClothing(row) : undefined;
   }
 
   async getAllClothing(): Promise<Clothing[]> {
-    return Array.from(this.clothingItems.values()).sort(
-      (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
-    );
+    const rows = this.db.prepare("SELECT * FROM clothing ORDER BY created_at DESC").all();
+    return rows.map(rowToClothing);
   }
 
   async getAvailableClothing(): Promise<Clothing[]> {
-    return Array.from(this.clothingItems.values())
-      .filter(c => c.inLaundry === 0)
-      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    const rows = this.db.prepare("SELECT * FROM clothing WHERE in_laundry = 0 ORDER BY created_at DESC").all();
+    return rows.map(rowToClothing);
   }
 
   async getClothingByTagId(tagId: string): Promise<Clothing | undefined> {
-    return Array.from(this.clothingItems.values()).find(c => c.tagId === tagId);
+    const row = this.db.prepare("SELECT * FROM clothing WHERE tag_id = ?").get(tagId);
+    return row ? rowToClothing(row) : undefined;
   }
 
-  async createClothing(insertClothing: InsertClothing): Promise<Clothing> {
-    const id = randomUUID();
-    const item: Clothing = {
-      id,
-      tagId: insertClothing.tagId,
-      name: insertClothing.name,
-      category: insertClothing.category,
-      color: insertClothing.color,
-      season: insertClothing.season,
-      occasion: insertClothing.occasion,
-      imageUrl: insertClothing.imageUrl ?? null,
-      inLaundry: insertClothing.inLaundry ?? 0,
-      lastWorn: insertClothing.lastWorn ?? null,
-      timesWorn: insertClothing.timesWorn ?? 0,
-      createdAt: new Date(),
-    };
-    this.clothingItems.set(id, item);
-    return item;
+  async createClothing(c: InsertClothing): Promise<Clothing> {
+    const id = crypto.randomUUID();
+    const now = new Date().toISOString();
+    this.db.prepare(`
+      INSERT INTO clothing (id, tag_id, name, category, color, season, occasion, image_url, in_laundry, last_worn, times_worn, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      id, c.tagId, c.name, c.category, c.color, c.season, c.occasion,
+      c.imageUrl ?? null,
+      c.inLaundry ?? 0,
+      c.lastWorn ? new Date(c.lastWorn).toISOString() : null,
+      c.timesWorn ?? 0,
+      now
+    );
+    return rowToClothing(this.db.prepare("SELECT * FROM clothing WHERE id = ?").get(id));
   }
 
   async updateClothing(id: string, updates: Partial<InsertClothing>): Promise<Clothing | undefined> {
-    const existing = this.clothingItems.get(id);
+    const existing = await this.getClothing(id);
     if (!existing) return undefined;
-    const updated: Clothing = { ...existing, ...updates };
-    this.clothingItems.set(id, updated);
-    return updated;
+
+    const fields: string[] = [];
+    const values: any[] = [];
+
+    if (updates.tagId !== undefined)    { fields.push("tag_id = ?");    values.push(updates.tagId); }
+    if (updates.name !== undefined)     { fields.push("name = ?");       values.push(updates.name); }
+    if (updates.category !== undefined) { fields.push("category = ?");   values.push(updates.category); }
+    if (updates.color !== undefined)    { fields.push("color = ?");      values.push(updates.color); }
+    if (updates.season !== undefined)   { fields.push("season = ?");     values.push(updates.season); }
+    if (updates.occasion !== undefined) { fields.push("occasion = ?");   values.push(updates.occasion); }
+    if (updates.imageUrl !== undefined) { fields.push("image_url = ?");  values.push(updates.imageUrl); }
+    if (updates.inLaundry !== undefined){ fields.push("in_laundry = ?"); values.push(updates.inLaundry); }
+    if (updates.lastWorn !== undefined) { fields.push("last_worn = ?");  values.push(updates.lastWorn ? new Date(updates.lastWorn).toISOString() : null); }
+    if (updates.timesWorn !== undefined){ fields.push("times_worn = ?"); values.push(updates.timesWorn); }
+
+    if (fields.length === 0) return existing;
+    values.push(id);
+    this.db.prepare(`UPDATE clothing SET ${fields.join(", ")} WHERE id = ?`).run(...values);
+    return rowToClothing(this.db.prepare("SELECT * FROM clothing WHERE id = ?").get(id));
   }
 
   async deleteClothing(id: string): Promise<boolean> {
-    return this.clothingItems.delete(id);
+    const result = this.db.prepare("DELETE FROM clothing WHERE id = ?").run(id);
+    return result.changes > 0;
   }
 
   async markClothingAsWorn(id: string): Promise<Clothing | undefined> {
-    const existing = this.clothingItems.get(id);
+    const existing = await this.getClothing(id);
     if (!existing) return undefined;
-    const updated: Clothing = {
-      ...existing,
-      lastWorn: new Date(),
-      timesWorn: existing.timesWorn + 1,
-    };
-    this.clothingItems.set(id, updated);
-    return updated;
+    this.db.prepare("UPDATE clothing SET last_worn = ?, times_worn = times_worn + 1 WHERE id = ?")
+      .run(new Date().toISOString(), id);
+    return rowToClothing(this.db.prepare("SELECT * FROM clothing WHERE id = ?").get(id));
   }
 
   async toggleClothingLaundry(id: string): Promise<Clothing | undefined> {
-    const existing = this.clothingItems.get(id);
+    const existing = await this.getClothing(id);
     if (!existing) return undefined;
-    const updated: Clothing = {
-      ...existing,
-      inLaundry: existing.inLaundry === 1 ? 0 : 1,
-    };
-    this.clothingItems.set(id, updated);
-    return updated;
+    const newVal = existing.inLaundry === 1 ? 0 : 1;
+    this.db.prepare("UPDATE clothing SET in_laundry = ? WHERE id = ?").run(newVal, id);
+    return rowToClothing(this.db.prepare("SELECT * FROM clothing WHERE id = ?").get(id));
   }
 
+  // ── Outfits ────────────────────────────────────────────────────────────────
+
   async getOutfit(id: string): Promise<Outfit | undefined> {
-    return this.outfitItems.get(id);
+    const row = this.db.prepare("SELECT * FROM outfits WHERE id = ?").get(id);
+    return row ? rowToOutfit(row) : undefined;
   }
 
   async getAllOutfits(): Promise<Outfit[]> {
-    return Array.from(this.outfitItems.values()).sort(
-      (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
-    );
+    const rows = this.db.prepare("SELECT * FROM outfits ORDER BY created_at DESC").all();
+    return rows.map(rowToOutfit);
   }
 
   async getFavoriteOutfits(): Promise<Outfit[]> {
-    return Array.from(this.outfitItems.values())
-      .filter(o => o.isFavorite === 1)
-      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    const rows = this.db.prepare("SELECT * FROM outfits WHERE is_favorite = 1 ORDER BY created_at DESC").all();
+    return rows.map(rowToOutfit);
   }
 
-  async createOutfit(insertOutfit: InsertOutfit): Promise<Outfit> {
-    const id = randomUUID();
-    const outfit: Outfit = {
-      id,
-      name: insertOutfit.name,
-      clothingIds: insertOutfit.clothingIds,
-      occasion: insertOutfit.occasion,
-      season: insertOutfit.season,
-      isFavorite: insertOutfit.isFavorite ?? 0,
-      lastWorn: insertOutfit.lastWorn ?? null,
-      timesWorn: insertOutfit.timesWorn ?? 0,
-      createdAt: new Date(),
-    };
-    this.outfitItems.set(id, outfit);
-    return outfit;
+  async createOutfit(o: InsertOutfit): Promise<Outfit> {
+    const id = crypto.randomUUID();
+    const now = new Date().toISOString();
+    this.db.prepare(`
+      INSERT INTO outfits (id, name, clothing_ids, occasion, season, is_favorite, last_worn, times_worn, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      id, o.name, JSON.stringify(o.clothingIds), o.occasion, o.season,
+      o.isFavorite ?? 0,
+      o.lastWorn ? new Date(o.lastWorn).toISOString() : null,
+      o.timesWorn ?? 0,
+      now
+    );
+    return rowToOutfit(this.db.prepare("SELECT * FROM outfits WHERE id = ?").get(id));
   }
 
   async updateOutfit(id: string, updates: Partial<InsertOutfit>): Promise<Outfit | undefined> {
-    const existing = this.outfitItems.get(id);
+    const existing = await this.getOutfit(id);
     if (!existing) return undefined;
-    const updated: Outfit = { ...existing, ...updates };
-    this.outfitItems.set(id, updated);
-    return updated;
+
+    const fields: string[] = [];
+    const values: any[] = [];
+
+    if (updates.name !== undefined)        { fields.push("name = ?");        values.push(updates.name); }
+    if (updates.clothingIds !== undefined) { fields.push("clothing_ids = ?"); values.push(JSON.stringify(updates.clothingIds)); }
+    if (updates.occasion !== undefined)    { fields.push("occasion = ?");     values.push(updates.occasion); }
+    if (updates.season !== undefined)      { fields.push("season = ?");       values.push(updates.season); }
+    if (updates.isFavorite !== undefined)  { fields.push("is_favorite = ?");  values.push(updates.isFavorite); }
+    if (updates.lastWorn !== undefined)    { fields.push("last_worn = ?");    values.push(updates.lastWorn ? new Date(updates.lastWorn).toISOString() : null); }
+    if (updates.timesWorn !== undefined)   { fields.push("times_worn = ?");   values.push(updates.timesWorn); }
+
+    if (fields.length === 0) return existing;
+    values.push(id);
+    this.db.prepare(`UPDATE outfits SET ${fields.join(", ")} WHERE id = ?`).run(...values);
+    return rowToOutfit(this.db.prepare("SELECT * FROM outfits WHERE id = ?").get(id));
   }
 
   async toggleOutfitFavorite(id: string): Promise<Outfit | undefined> {
-    const existing = this.outfitItems.get(id);
+    const existing = await this.getOutfit(id);
     if (!existing) return undefined;
-    const updated: Outfit = {
-      ...existing,
-      isFavorite: existing.isFavorite === 1 ? 0 : 1,
-    };
-    this.outfitItems.set(id, updated);
-    return updated;
+    const newVal = existing.isFavorite === 1 ? 0 : 1;
+    this.db.prepare("UPDATE outfits SET is_favorite = ? WHERE id = ?").run(newVal, id);
+    return rowToOutfit(this.db.prepare("SELECT * FROM outfits WHERE id = ?").get(id));
   }
 
   async markOutfitAsWorn(id: string): Promise<Outfit | undefined> {
-    const existing = this.outfitItems.get(id);
+    const existing = await this.getOutfit(id);
     if (!existing) return undefined;
-    const updated: Outfit = {
-      ...existing,
-      lastWorn: new Date(),
-      timesWorn: existing.timesWorn + 1,
-    };
-    this.outfitItems.set(id, updated);
-    return updated;
+    this.db.prepare("UPDATE outfits SET last_worn = ?, times_worn = times_worn + 1 WHERE id = ?")
+      .run(new Date().toISOString(), id);
+    return rowToOutfit(this.db.prepare("SELECT * FROM outfits WHERE id = ?").get(id));
   }
 
   async deleteOutfit(id: string): Promise<boolean> {
-    return this.outfitItems.delete(id);
+    const result = this.db.prepare("DELETE FROM outfits WHERE id = ?").run(id);
+    return result.changes > 0;
   }
 }
 
-export const storage = new MemStorage();
-
-export async function seedDatabaseIfEmpty(): Promise<void> {
-  // No-op: MemStorage seeds itself in constructor
-}
+const DB_PATH = path.join(process.cwd(), "data", "wardrobe.db");
+export const storage = new SqliteStorage(DB_PATH);
