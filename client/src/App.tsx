@@ -15,18 +15,44 @@ import ClothingDetail from "@/pages/clothing-detail";
 import Login from "@/pages/login";
 import NotFound from "@/pages/not-found";
 
+function PageWrapper({ children, animKey }: { children: React.ReactNode; animKey: string }) {
+  return (
+    <div key={animKey} className="page-enter">
+      {children}
+    </div>
+  );
+}
+
 function MainApp() {
   return (
     <div className="min-h-screen bg-background">
       <Switch>
         <Route path="/" component={() => <Redirect to="/wardrobe" />} />
-        <Route path="/scanner" component={Scanner} />
-        <Route path="/wardrobe" component={Wardrobe} />
-        <Route path="/outfits" component={Outfits} />
-        <Route path="/profile" component={Profile} />
-        <Route path="/add" component={AddClothing} />
-        <Route path="/clothing/:id" component={ClothingDetail} />
-        <Route path="/clothing/:id/edit" component={EditClothing} />
+        <Route path="/scanner">
+          <PageWrapper animKey="scanner"><Scanner /></PageWrapper>
+        </Route>
+        <Route path="/wardrobe">
+          <PageWrapper animKey="wardrobe"><Wardrobe /></PageWrapper>
+        </Route>
+        <Route path="/outfits">
+          <PageWrapper animKey="outfits"><Outfits /></PageWrapper>
+        </Route>
+        <Route path="/profile">
+          <PageWrapper animKey="profile"><Profile /></PageWrapper>
+        </Route>
+        <Route path="/add">
+          <PageWrapper animKey="add"><AddClothing /></PageWrapper>
+        </Route>
+        <Route path="/clothing/:id/edit">
+          {(params) => (
+            <PageWrapper animKey={`edit-${params.id}`}><EditClothing /></PageWrapper>
+          )}
+        </Route>
+        <Route path="/clothing/:id">
+          {(params) => (
+            <PageWrapper animKey={`clothing-${params.id}`}><ClothingDetail /></PageWrapper>
+          )}
+        </Route>
         <Route component={NotFound} />
       </Switch>
       <BottomNav />
@@ -37,11 +63,11 @@ function MainApp() {
 function AppContent() {
   const { user } = useTheme();
 
-  if (!user) {
-    return <Login />;
-  }
-
-  return <MainApp />;
+  return (
+    <div key={user ? "app" : "login"} className="screen-enter">
+      {user ? <MainApp /> : <Login />}
+    </div>
+  );
 }
 
 function App() {
