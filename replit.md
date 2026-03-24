@@ -55,7 +55,7 @@ Preferred communication style: Simple, everyday language.
 
 **Object Storage**: Replit Object Storage integration for clothing photo uploads. Normalized paths (`/objects/<id>`) stored in database for persistent image access.
 
-**Storage Layer**: DatabaseStorage using Drizzle ORM with PostgreSQL. Includes sample seed data for demonstration. The interface defines methods for:
+**Storage Layer**: MemStorage (in-memory) while awaiting a valid PostgreSQL connection. Previously used DatabaseStorage with Drizzle ORM. Data resets on server restart. Includes sample seed data loaded at startup. The interface defines methods for:
 - User management (create, retrieve by username/id)
 - Clothing CRUD operations with laundry tracking
 - Outfit management with favorites and wear history
