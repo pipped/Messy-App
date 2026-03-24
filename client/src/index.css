@@ -165,6 +165,128 @@
   --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
 }
 
+/* ===== SEASONAL THEMES ===== */
+
+/* Spring: Fresh greens and blossoms */
+.theme-spring {
+  --primary: 145 60% 40%;
+  --primary-foreground: 0 0% 98%;
+  --ring: 145 60% 40%;
+  --sidebar-primary: 145 60% 40%;
+  --sidebar-primary-foreground: 0 0% 98%;
+  --sidebar-accent: 145 20% 88%;
+  --sidebar-accent-foreground: 0 0% 10%;
+  --sidebar-ring: 145 60% 40%;
+  --chart-1: 145 60% 40%;
+  --chart-2: 90 55% 42%;
+  --chart-3: 175 55% 40%;
+  --chart-4: 50 70% 45%;
+  --chart-5: 320 55% 48%;
+}
+
+.dark.theme-spring {
+  --primary: 145 55% 50%;
+  --ring: 145 55% 50%;
+  --sidebar-primary: 145 55% 50%;
+  --sidebar-accent: 145 12% 18%;
+  --sidebar-ring: 145 55% 50%;
+  --chart-1: 145 55% 55%;
+  --chart-2: 90 50% 55%;
+  --chart-3: 175 50% 55%;
+  --chart-4: 50 70% 58%;
+  --chart-5: 320 55% 60%;
+}
+
+/* Summer: Sky blues and ocean */
+.theme-summer {
+  --primary: 200 80% 46%;
+  --primary-foreground: 0 0% 98%;
+  --ring: 200 80% 46%;
+  --sidebar-primary: 200 80% 46%;
+  --sidebar-primary-foreground: 0 0% 98%;
+  --sidebar-accent: 200 20% 88%;
+  --sidebar-accent-foreground: 0 0% 10%;
+  --sidebar-ring: 200 80% 46%;
+  --chart-1: 200 80% 46%;
+  --chart-2: 220 70% 48%;
+  --chart-3: 175 65% 42%;
+  --chart-4: 40 75% 48%;
+  --chart-5: 280 60% 50%;
+}
+
+.dark.theme-summer {
+  --primary: 200 75% 56%;
+  --ring: 200 75% 56%;
+  --sidebar-primary: 200 75% 56%;
+  --sidebar-accent: 200 14% 18%;
+  --sidebar-ring: 200 75% 56%;
+  --chart-1: 200 75% 60%;
+  --chart-2: 220 68% 62%;
+  --chart-3: 175 60% 58%;
+  --chart-4: 40 72% 60%;
+  --chart-5: 280 58% 62%;
+}
+
+/* Fall: Warm ambers and earthy tones */
+.theme-fall {
+  --primary: 25 82% 46%;
+  --primary-foreground: 0 0% 98%;
+  --ring: 25 82% 46%;
+  --sidebar-primary: 25 82% 46%;
+  --sidebar-primary-foreground: 0 0% 98%;
+  --sidebar-accent: 25 20% 88%;
+  --sidebar-accent-foreground: 0 0% 10%;
+  --sidebar-ring: 25 82% 46%;
+  --chart-1: 25 82% 46%;
+  --chart-2: 10 75% 44%;
+  --chart-3: 40 80% 48%;
+  --chart-4: 350 65% 50%;
+  --chart-5: 60 70% 44%;
+}
+
+.dark.theme-fall {
+  --primary: 25 78% 56%;
+  --ring: 25 78% 56%;
+  --sidebar-primary: 25 78% 56%;
+  --sidebar-accent: 25 14% 18%;
+  --sidebar-ring: 25 78% 56%;
+  --chart-1: 25 78% 60%;
+  --chart-2: 10 70% 58%;
+  --chart-3: 40 75% 60%;
+  --chart-4: 350 62% 62%;
+  --chart-5: 60 68% 58%;
+}
+
+/* Winter: Cool blues and crisp silver */
+.theme-winter {
+  --primary: 228 68% 52%;
+  --primary-foreground: 0 0% 98%;
+  --ring: 228 68% 52%;
+  --sidebar-primary: 228 68% 52%;
+  --sidebar-primary-foreground: 0 0% 98%;
+  --sidebar-accent: 228 15% 88%;
+  --sidebar-accent-foreground: 0 0% 10%;
+  --sidebar-ring: 228 68% 52%;
+  --chart-1: 228 68% 52%;
+  --chart-2: 200 65% 48%;
+  --chart-3: 260 60% 52%;
+  --chart-4: 180 60% 44%;
+  --chart-5: 300 55% 52%;
+}
+
+.dark.theme-winter {
+  --primary: 228 65% 62%;
+  --ring: 228 65% 62%;
+  --sidebar-primary: 228 65% 62%;
+  --sidebar-accent: 228 12% 18%;
+  --sidebar-ring: 228 65% 62%;
+  --chart-1: 228 65% 65%;
+  --chart-2: 200 62% 62%;
+  --chart-3: 260 58% 65%;
+  --chart-4: 180 58% 58%;
+  --chart-5: 300 52% 65%;
+}
+
 @layer base {
   * {
     @apply border-border;

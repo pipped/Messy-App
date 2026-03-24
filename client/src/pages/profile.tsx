@@ -1,15 +1,25 @@
 import { useState } from "react";
-import { User, TrendingUp, AlertTriangle, Shirt, Sun, Snowflake, Leaf, Cloud, BarChart3, Star, Calendar, WashingMachine } from "lucide-react";
+import { User, TrendingUp, AlertTriangle, Shirt, Sun, Snowflake, Leaf, Cloud, BarChart3, Star, Calendar, WashingMachine, Wind, LogOut } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
+import { useTheme, type Season } from "@/lib/theme-context";
 import type { Clothing, Outfit } from "@shared/schema";
+
+const seasonOptions: { id: Season; label: string; icon: typeof Leaf }[] = [
+  { id: "spring", label: "Spring", icon: Leaf },
+  { id: "summer", label: "Summer", icon: Sun },
+  { id: "fall", label: "Fall", icon: Wind },
+  { id: "winter", label: "Winter", icon: Snowflake },
+];
 
 export default function Profile() {
   const [, setLocation] = useLocation();
+  const { user, logout, season, setSeason } = useTheme();
 
   const { data: clothes } = useQuery<Clothing[]>({
     queryKey: ["/api/clothing"],
@@ -90,16 +100,54 @@ export default function Profile() {
 
   const outfitWearStats = outfits?.reduce((sum, outfit) => sum + outfit.timesWorn, 0) || 0;
 
+  const initials = user ? user.slice(0, 2).toUpperCase() : "??";
+
   return (
     <div className="flex flex-col h-full bg-background">
-      <div className="flex-shrink-0 bg-card border-b border-card-border p-6">
-        <div className="flex items-center gap-4">
-          <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
-            <User className="w-10 h-10 text-primary" />
+      {/* Header */}
+      <div className="flex-shrink-0 bg-card border-b border-card-border">
+        <div className="p-5 flex items-center gap-4">
+          <div className="w-14 h-14 rounded-2xl bg-primary flex items-center justify-center flex-shrink-0">
+            <span className="text-lg font-bold text-primary-foreground">{initials}</span>
           </div>
-          <div className="flex-1">
-            <h1 className="text-2xl font-bold text-card-foreground">My Wardrobe</h1>
-            <p className="text-sm text-muted-foreground mt-1">Stats & Insights</p>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-xl font-bold text-card-foreground truncate">{user}</h1>
+            <p className="text-xs text-muted-foreground mt-0.5">Stats & Insights</p>
+          </div>
+          <Button
+            data-testid="button-logout"
+            variant="ghost"
+            size="icon"
+            onClick={logout}
+            className="flex-shrink-0 text-muted-foreground"
+          >
+            <LogOut className="w-5 h-5" />
+          </Button>
+        </div>
+
+        {/* Season Theme Selector */}
+        <div className="px-5 pb-4">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-2">Theme</p>
+          <div className="grid grid-cols-4 gap-2">
+            {seasonOptions.map((s) => {
+              const Icon = s.icon;
+              const isActive = season === s.id;
+              return (
+                <button
+                  key={s.id}
+                  data-testid={`theme-${s.id}`}
+                  onClick={() => setSeason(s.id)}
+                  className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg border text-xs font-medium transition-all ${
+                    isActive
+                      ? "bg-primary text-primary-foreground border-transparent"
+                      : "border-border text-muted-foreground bg-background hover-elevate"
+                  }`}
+                >
+                  <Icon className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span>{s.label}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -435,12 +483,8 @@ export default function Profile() {
         </div>
 
         <div className="p-4 pt-8 text-center">
-          <p className="text-xs text-muted-foreground">
-            Wardrobe Manager v1.0.0
-          </p>
-          <p className="text-xs text-muted-foreground mt-1">
-            RFID-powered clothing organization
-          </p>
+          <p className="text-xs text-muted-foreground font-semibold">Messy v1.0.0</p>
+          <p className="text-xs text-muted-foreground mt-1">RFID-powered wardrobe organization</p>
         </div>
       </div>
     </div>

@@ -24,12 +24,17 @@ Preferred communication style: Simple, everyday language.
 - Custom color palette using CSS variables for theming
 
 **Routing**: Wouter for client-side routing with the following main routes:
+- `/login` - Login/onboarding page with season selector
 - `/scanner` - RFID tag scanning interface
 - `/wardrobe` - Grid view of all clothing items with laundry filters
 - `/outfits` - Outfit generation, favorites, and history
-- `/profile` - Stats dashboard with analytics
+- `/profile` - Stats dashboard with analytics, season theme selector, and logout
 - `/add` - Form to add new clothing items with photo upload
 - `/clothing/:id` - Individual clothing item details with laundry toggle
+
+**Auth**: Simple name-based login stored in localStorage via `ThemeContext`. Unauthenticated users are redirected to `/login`. No passwords needed (demo-friendly).
+
+**Season Themes**: Four seasonal color themes (Spring/Summer/Fall/Winter) applied via CSS class on `document.documentElement`. Managed by `ThemeProvider` in `client/src/lib/theme-context.tsx`, persisted in localStorage. Theme selector available on the login page and profile page.
 
 **State Management**: TanStack Query (React Query) for server state management with cache invalidation on mutations.
 

@@ -7,10 +7,12 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLocation } from "wouter";
+import { useTheme } from "@/lib/theme-context";
 import type { Clothing } from "@shared/schema";
 
 export default function Wardrobe() {
   const [, setLocation] = useLocation();
+  const { user } = useTheme();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [showLaundry, setShowLaundry] = useState<"all" | "available" | "laundry">("all");
@@ -46,9 +48,12 @@ export default function Wardrobe() {
       <div className="flex-shrink-0 p-4 space-y-4 bg-card border-b border-card-border">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-card-foreground">Wardrobe</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              {availableCount} available, {laundryCount} in laundry
+            <p className="text-xs font-medium text-muted-foreground mb-0.5">
+              {user ? `Hey, ${user.split(" ")[0]}` : "Your"}
+            </p>
+            <h1 className="text-3xl font-black tracking-tight text-card-foreground">Wardrobe</h1>
+            <p className="text-xs text-muted-foreground mt-1">
+              {availableCount} available · {laundryCount} in laundry
             </p>
           </div>
           <Button
