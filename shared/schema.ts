@@ -50,9 +50,9 @@ export const insertClothingSchema = createInsertSchema(clothing).omit({
   inLaundry: z.number().default(0),
   lastWorn: z.coerce.date().optional(),
   timesWorn: z.number().default(0),
-  washingInstructions: z.string().optional(),
-  notes: z.string().optional(),
-  purchasePrice: z.string().optional(),
+  washingInstructions: z.string().nullable().optional(),
+  notes: z.string().nullable().optional(),
+  purchasePrice: z.string().nullable().optional(),
 });
 
 export type InsertClothing = z.infer<typeof insertClothingSchema>;
