@@ -9,6 +9,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useLocation } from "wouter";
 import { useTheme } from "@/lib/theme-context";
 import type { Clothing } from "@shared/schema";
+import { useWeather } from "@/hooks/use-weather";
+import { WeatherWidget } from "@/components/weather-widget";
 
 export default function Wardrobe() {
   const [, setLocation] = useLocation();
@@ -16,6 +18,7 @@ export default function Wardrobe() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [showLaundry, setShowLaundry] = useState<"all" | "available" | "laundry">("all");
+  const [weatherState, retryWeather] = useWeather();
 
   const { data: clothes, isLoading } = useQuery<Clothing[]>({
     queryKey: ["/api/clothing"],
@@ -64,6 +67,10 @@ export default function Wardrobe() {
             <Plus className="w-5 h-5" />
           </Button>
         </div>
+
+        {weatherState.status === "success" && (
+          <WeatherWidget state={weatherState} onRetry={retryWeather} compact />
+        )}
 
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />

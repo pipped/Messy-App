@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Sparkles, RefreshCw, Heart, Clock, Shirt, Trash2, Check } from "lucide-react";
+import { useWeather } from "@/hooks/use-weather";
+import { WeatherWidget } from "@/components/weather-widget";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -52,6 +54,7 @@ export default function Outfits() {
   const [currentOutfit, setCurrentOutfit] = useState<GeneratedOutfit | null>(null);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [outfitName, setOutfitName] = useState("");
+  const [weatherState, retryWeather] = useWeather();
 
   const { data: clothes, isLoading: clothesLoading } = useQuery<Clothing[]>({
     queryKey: ["/api/clothing"],
@@ -227,6 +230,12 @@ export default function Outfits() {
 
         <TabsContent value="generate" className="flex-1 overflow-y-auto mt-0 pb-24">
           <div className="p-4 space-y-3">
+            <WeatherWidget
+              state={weatherState}
+              onRetry={retryWeather}
+              onApplySeason={(s) => setSeason(s)}
+            />
+
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">Occasion</label>
