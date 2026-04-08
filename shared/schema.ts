@@ -31,6 +31,9 @@ export const clothing = pgTable("clothing", {
   lastWorn: timestamp("last_worn"), // Track when item was last worn
   timesWorn: integer("times_worn").notNull().default(0),
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  washingInstructions: text("washing_instructions"), // e.g. "Machine wash cold"
+  notes: text("notes"), // Personal notes about the item
+  purchasePrice: text("purchase_price"), // Purchase price stored as string, e.g. "29.99"
 });
 
 export const insertClothingSchema = createInsertSchema(clothing).omit({
@@ -47,6 +50,9 @@ export const insertClothingSchema = createInsertSchema(clothing).omit({
   inLaundry: z.number().default(0),
   lastWorn: z.coerce.date().optional(),
   timesWorn: z.number().default(0),
+  washingInstructions: z.string().optional(),
+  notes: z.string().optional(),
+  purchasePrice: z.string().optional(),
 });
 
 export type InsertClothing = z.infer<typeof insertClothingSchema>;

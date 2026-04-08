@@ -6,6 +6,7 @@ import { useLocation, useParams } from "wouter";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Form,
@@ -49,6 +50,9 @@ export default function EditClothing() {
       imageUrl: "",
       timesWorn: 0,
       inLaundry: 0,
+      washingInstructions: "",
+      notes: "",
+      purchasePrice: "",
     },
   });
 
@@ -64,6 +68,9 @@ export default function EditClothing() {
         imageUrl: item.imageUrl || "",
         timesWorn: item.timesWorn,
         inLaundry: item.inLaundry,
+        washingInstructions: item.washingInstructions || "",
+        notes: item.notes || "",
+        purchasePrice: item.purchasePrice || "",
       });
       setUploadedImageUrl(item.imageUrl || null);
     }
@@ -106,6 +113,9 @@ export default function EditClothing() {
       season: data.season,
       occasion: data.occasion,
       imageUrl: data.imageUrl,
+      washingInstructions: data.washingInstructions || null,
+      notes: data.notes || null,
+      purchasePrice: data.purchasePrice || null,
     };
     updateClothingMutation.mutate(editableData);
   };
@@ -296,6 +306,75 @@ export default function EditClothing() {
                       <SelectItem value="business">Business</SelectItem>
                     </SelectContent>
                   </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Purchase Price */}
+            <FormField
+              control={form.control}
+              name="purchasePrice"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Purchase Price (optional)</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
+                      <Input
+                        data-testid="input-purchase-price-edit"
+                        {...field}
+                        value={field.value ?? ""}
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="0.00"
+                        className="h-12 pl-7"
+                      />
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Washing Instructions */}
+            <FormField
+              control={form.control}
+              name="washingInstructions"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Washing Instructions (optional)</FormLabel>
+                  <FormControl>
+                    <Input
+                      data-testid="input-washing-edit"
+                      {...field}
+                      value={field.value ?? ""}
+                      placeholder="e.g., Machine wash cold, hang dry"
+                      className="h-12"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Notes */}
+            <FormField
+              control={form.control}
+              name="notes"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Notes (optional)</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      data-testid="input-notes-edit"
+                      {...field}
+                      value={field.value ?? ""}
+                      placeholder="Any personal notes about this item…"
+                      className="min-h-24 resize-none"
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}

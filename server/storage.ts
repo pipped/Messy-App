@@ -44,6 +44,9 @@ function rowToClothing(row: any): Clothing {
     lastWorn: row.last_worn ? new Date(row.last_worn) : null,
     timesWorn: row.times_worn,
     createdAt: new Date(row.created_at),
+    washingInstructions: row.washing_instructions ?? null,
+    notes: row.notes ?? null,
+    purchasePrice: row.purchase_price ?? null,
   };
 }
 
@@ -100,6 +103,17 @@ export class SqliteStorage implements IStorage {
         created_at TEXT NOT NULL DEFAULT (datetime('now'))
       );
 
+      -- Migrate: add new columns if they don't exist yet (SQLite supports this)
+    `);
+    // Run migrations safely (ADD COLUMN IF NOT EXISTS is not supported in older SQLite,
+    // so we use a try/catch per column)
+    const addColumnIfMissing = (sql: string) => {
+      try { this.db.exec(sql); } catch (_) { /* column already exists */ }
+    };
+    addColumnIfMissing("ALTER TABLE clothing ADD COLUMN washing_instructions TEXT");
+    addColumnIfMissing("ALTER TABLE clothing ADD COLUMN notes TEXT");
+    addColumnIfMissing("ALTER TABLE clothing ADD COLUMN purchase_price TEXT");
+    this.db.exec(`
       CREATE TABLE IF NOT EXISTS outfits (
         id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-4' || substr(lower(hex(randomblob(2))),2) || '-' || substr('89ab',abs(random()) % 4 + 1, 1) || substr(lower(hex(randomblob(2))),2) || '-' || lower(hex(randomblob(6)))),
         name TEXT NOT NULL,
@@ -158,15 +172,18 @@ export class SqliteStorage implements IStorage {
     const id = crypto.randomUUID();
     const now = new Date().toISOString();
     this.db.prepare(`
-      INSERT INTO clothing (id, tag_id, name, category, color, season, occasion, image_url, in_laundry, last_worn, times_worn, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO clothing (id, tag_id, name, category, color, season, occasion, image_url, in_laundry, last_worn, times_worn, created_at, washing_instructions, notes, purchase_price)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       id, c.tagId, c.name, c.category, c.color, c.season, c.occasion,
       c.imageUrl ?? null,
       c.inLaundry ?? 0,
       c.lastWorn ? new Date(c.lastWorn).toISOString() : null,
       c.timesWorn ?? 0,
-      now
+      now,
+      c.washingInstructions ?? null,
+      c.notes ?? null,
+      c.purchasePrice ?? null,
     );
     return rowToClothing(this.db.prepare("SELECT * FROM clothing WHERE id = ?").get(id));
   }
@@ -178,16 +195,19 @@ export class SqliteStorage implements IStorage {
     const fields: string[] = [];
     const values: any[] = [];
 
-    if (updates.tagId !== undefined)    { fields.push("tag_id = ?");    values.push(updates.tagId); }
-    if (updates.name !== undefined)     { fields.push("name = ?");       values.push(updates.name); }
-    if (updates.category !== undefined) { fields.push("category = ?");   values.push(updates.category); }
-    if (updates.color !== undefined)    { fields.push("color = ?");      values.push(updates.color); }
-    if (updates.season !== undefined)   { fields.push("season = ?");     values.push(updates.season); }
-    if (updates.occasion !== undefined) { fields.push("occasion = ?");   values.push(updates.occasion); }
-    if (updates.imageUrl !== undefined) { fields.push("image_url = ?");  values.push(updates.imageUrl); }
-    if (updates.inLaundry !== undefined){ fields.push("in_laundry = ?"); values.push(updates.inLaundry); }
-    if (updates.lastWorn !== undefined) { fields.push("last_worn = ?");  values.push(updates.lastWorn ? new Date(updates.lastWorn).toISOString() : null); }
-    if (updates.timesWorn !== undefined){ fields.push("times_worn = ?"); values.push(updates.timesWorn); }
+    if (updates.tagId !== undefined)              { fields.push("tag_id = ?");              values.push(updates.tagId); }
+    if (updates.name !== undefined)               { fields.push("name = ?");                values.push(updates.name); }
+    if (updates.category !== undefined)           { fields.push("category = ?");            values.push(updates.category); }
+    if (updates.color !== undefined)              { fields.push("color = ?");               values.push(updates.color); }
+    if (updates.season !== undefined)             { fields.push("season = ?");              values.push(updates.season); }
+    if (updates.occasion !== undefined)           { fields.push("occasion = ?");            values.push(updates.occasion); }
+    if (updates.imageUrl !== undefined)           { fields.push("image_url = ?");           values.push(updates.imageUrl); }
+    if (updates.inLaundry !== undefined)          { fields.push("in_laundry = ?");          values.push(updates.inLaundry); }
+    if (updates.lastWorn !== undefined)           { fields.push("last_worn = ?");           values.push(updates.lastWorn ? new Date(updates.lastWorn).toISOString() : null); }
+    if (updates.timesWorn !== undefined)          { fields.push("times_worn = ?");          values.push(updates.timesWorn); }
+    if (updates.washingInstructions !== undefined){ fields.push("washing_instructions = ?");values.push(updates.washingInstructions ?? null); }
+    if (updates.notes !== undefined)              { fields.push("notes = ?");               values.push(updates.notes ?? null); }
+    if (updates.purchasePrice !== undefined)      { fields.push("purchase_price = ?");      values.push(updates.purchasePrice ?? null); }
 
     if (fields.length === 0) return existing;
     values.push(id);

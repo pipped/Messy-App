@@ -1,6 +1,6 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, useLocation } from "wouter";
-import { ArrowLeft, Pencil, Trash2, Clock, Shirt, WashingMachine } from "lucide-react";
+import { ArrowLeft, Pencil, Trash2, Clock, Shirt, WashingMachine, DollarSign, StickyNote, Droplets } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -105,6 +105,11 @@ export default function ClothingDetail() {
     );
   }
 
+  const price = item.purchasePrice ? parseFloat(item.purchasePrice) : null;
+  const costPerWear = price && price > 0 && item.timesWorn > 0
+    ? (price / item.timesWorn).toFixed(2)
+    : null;
+
   return (
     <div className="min-h-screen bg-background pb-24">
       <div className="sticky top-0 z-10 bg-card border-b border-card-border p-4">
@@ -194,31 +199,88 @@ export default function ClothingDetail() {
           </div>
         </div>
 
+        {/* Stats grid */}
         <div className="grid grid-cols-2 gap-4">
-          <Card className="p-4 text-center">
+          <Card className="p-4 text-center" data-testid="stat-times-worn">
             <p className="text-4xl font-bold text-primary">{item.timesWorn}</p>
             <p className="text-sm text-muted-foreground mt-1">Times Worn</p>
           </Card>
-          <Card className="p-4 text-center">
-            <p className="text-sm font-medium text-foreground">Tag ID</p>
-            <p className="text-xs text-muted-foreground mt-1 font-mono truncate">
-              {item.tagId}
-            </p>
-          </Card>
+          {costPerWear ? (
+            <Card className="p-4 text-center" data-testid="stat-cost-per-wear">
+              <p className="text-4xl font-bold text-primary">${costPerWear}</p>
+              <p className="text-sm text-muted-foreground mt-1">Cost per Wear</p>
+            </Card>
+          ) : (
+            <Card className="p-4 text-center">
+              <p className="text-sm font-medium text-foreground">Tag ID</p>
+              <p className="text-xs text-muted-foreground mt-1 font-mono truncate">
+                {item.tagId}
+              </p>
+            </Card>
+          )}
         </div>
 
+        {/* Purchase price (when set, show full tag id row below) */}
+        {price && price > 0 && (
+          <Card className="p-4 flex items-center gap-3" data-testid="stat-purchase-price">
+            <DollarSign className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-foreground">Purchase Price</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                ${price.toFixed(2)}
+                {!costPerWear && " — wear it to calculate cost per wear"}
+              </p>
+            </div>
+          </Card>
+        )}
+
+        {/* Tag ID row (shown separately when cost-per-wear took the grid spot) */}
+        {costPerWear && (
+          <Card className="p-4 flex items-center gap-3">
+            <div className="flex-1">
+              <p className="text-sm font-medium text-foreground">Tag ID</p>
+              <p className="text-xs text-muted-foreground mt-0.5 font-mono truncate">
+                {item.tagId}
+              </p>
+            </div>
+          </Card>
+        )}
+
+        {/* Last Worn */}
         {item.lastWorn && (
           <Card className="p-4 flex items-center gap-3">
-            <Clock className="w-5 h-5 text-muted-foreground" />
+            <Clock className="w-5 h-5 text-muted-foreground flex-shrink-0" />
             <div className="flex-1">
               <p className="text-sm font-medium text-foreground">Last Worn</p>
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground mt-0.5">
                 {new Date(item.lastWorn).toLocaleDateString("en-US", {
                   month: "long",
                   day: "numeric",
                   year: "numeric",
                 })}
               </p>
+            </div>
+          </Card>
+        )}
+
+        {/* Washing Instructions */}
+        {item.washingInstructions && (
+          <Card className="p-4 flex items-start gap-3" data-testid="detail-washing">
+            <Droplets className="w-5 h-5 text-muted-foreground flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-foreground">Washing Instructions</p>
+              <p className="text-sm text-muted-foreground mt-0.5">{item.washingInstructions}</p>
+            </div>
+          </Card>
+        )}
+
+        {/* Notes */}
+        {item.notes && (
+          <Card className="p-4 flex items-start gap-3" data-testid="detail-notes">
+            <StickyNote className="w-5 h-5 text-muted-foreground flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-foreground">Notes</p>
+              <p className="text-sm text-muted-foreground mt-0.5 whitespace-pre-wrap">{item.notes}</p>
             </div>
           </Card>
         )}

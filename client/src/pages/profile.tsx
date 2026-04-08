@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { User, TrendingUp, AlertTriangle, Shirt, Sun, Snowflake, Leaf, Cloud, BarChart3, Star, Calendar, WashingMachine, Wind, LogOut, Camera } from "lucide-react";
+import { User, TrendingUp, AlertTriangle, Shirt, Sun, Snowflake, Leaf, Cloud, BarChart3, Star, Calendar, WashingMachine, Wind, LogOut, Camera, Gift } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -58,6 +58,14 @@ export default function Profile() {
     : [];
 
   const neverWornCount = unusedItems.length;
+
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const donationSuggestions = clothes
+    ? clothes.filter((item) =>
+        item.timesWorn === 0 && new Date(item.createdAt) < thirtyDaysAgo
+      )
+    : [];
 
   const categoryStats = clothes?.reduce((acc, item) => {
     acc[item.category] = (acc[item.category] || 0) + 1;
@@ -350,6 +358,61 @@ export default function Profile() {
                           <WashingMachine className="w-3 h-3 text-amber-500" />
                         </div>
                       </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Gift className="w-5 h-5 text-primary" />
+                  <h3 className="font-semibold text-foreground">Donation Suggestions</h3>
+                  {donationSuggestions.length > 0 && (
+                    <Badge variant="outline" className="text-primary">
+                      {donationSuggestions.length} items
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">Never worn items added over 30 days ago</p>
+                {donationSuggestions.length === 0 ? (
+                  <Card className="p-4 text-center">
+                    <p className="text-sm text-muted-foreground">
+                      {neverWornCount === 0
+                        ? "All items have been worn — great job!"
+                        : "No items meet the criteria yet"}
+                    </p>
+                  </Card>
+                ) : (
+                  <div className="space-y-2">
+                    {donationSuggestions.map((item) => (
+                      <Card
+                        key={item.id}
+                        data-testid={`donation-${item.id}`}
+                        className="p-3 flex items-center gap-3 cursor-pointer hover-elevate active-elevate-2"
+                        onClick={() => setLocation(`/clothing/${item.id}`)}
+                      >
+                        <div className="w-12 h-12 rounded-lg bg-muted overflow-hidden flex-shrink-0">
+                          {item.imageUrl ? (
+                            <img
+                              src={item.imageUrl}
+                              alt={item.name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Shirt className="w-6 h-6 text-muted-foreground/30" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-foreground truncate">{item.name}</p>
+                          <p className="text-xs text-muted-foreground capitalize">
+                            {item.category} · Added {new Date(item.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                          </p>
+                        </div>
+                        <Badge variant="outline" className="flex-shrink-0 text-xs">
+                          Never worn
+                        </Badge>
+                      </Card>
                     ))}
                   </div>
                 )}

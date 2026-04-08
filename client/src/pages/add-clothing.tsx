@@ -6,6 +6,7 @@ import { useLocation } from "wouter";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Form,
   FormControl,
@@ -46,6 +47,9 @@ export default function AddClothing() {
       occasion: "casual",
       imageUrl: "",
       timesWorn: 0,
+      washingInstructions: "",
+      notes: "",
+      purchasePrice: "",
     },
   });
 
@@ -244,6 +248,75 @@ export default function AddClothing() {
                       <SelectItem value="business">Business</SelectItem>
                     </SelectContent>
                   </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Purchase Price */}
+            <FormField
+              control={form.control}
+              name="purchasePrice"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Purchase Price (optional)</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
+                      <Input
+                        data-testid="input-purchase-price"
+                        {...field}
+                        value={field.value ?? ""}
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="0.00"
+                        className="h-12 pl-7"
+                      />
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Washing Instructions */}
+            <FormField
+              control={form.control}
+              name="washingInstructions"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Washing Instructions (optional)</FormLabel>
+                  <FormControl>
+                    <Input
+                      data-testid="input-washing"
+                      {...field}
+                      value={field.value ?? ""}
+                      placeholder="e.g., Machine wash cold, hang dry"
+                      className="h-12"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Notes */}
+            <FormField
+              control={form.control}
+              name="notes"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Notes (optional)</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      data-testid="input-notes"
+                      {...field}
+                      value={field.value ?? ""}
+                      placeholder="Any personal notes about this item…"
+                      className="min-h-24 resize-none"
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
