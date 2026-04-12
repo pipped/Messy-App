@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { queryClient } from "./queryClient";
 
 export type Season = "spring" | "summer" | "fall" | "winter";
 
@@ -65,6 +66,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const pfp = localStorage.getItem(`messy-pfp-${data.username}`) || null;
     const authUser: AuthUser = { id: data.id, username: data.username, profilePicture: pfp };
     localStorage.setItem("messy-user", JSON.stringify({ id: data.id, username: data.username }));
+    queryClient.clear();
     setUser(authUser);
   };
 
@@ -81,11 +83,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const data = await res.json();
     const authUser: AuthUser = { id: data.id, username: data.username, profilePicture: null };
     localStorage.setItem("messy-user", JSON.stringify({ id: data.id, username: data.username }));
+    queryClient.clear();
     setUser(authUser);
   };
 
   const logout = () => {
     localStorage.removeItem("messy-user");
+    queryClient.clear();
     setUser(null);
   };
 
