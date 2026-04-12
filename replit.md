@@ -62,7 +62,7 @@ Preferred communication style: Simple, everyday language.
 
 **Object Storage**: Replit Object Storage integration for clothing photo uploads. Normalized paths (`/objects/<id>`) stored in database for persistent image access.
 
-**Storage Layer**: SqliteStorage using `better-sqlite3` for full persistence. The SQLite database file lives at `data/wardrobe.db` in the project root and survives server restarts. WAL mode enabled for performance. The interface defines methods for:
+**Storage Layer**: DatabaseStorage using Drizzle ORM with Replit's built-in PostgreSQL (heliumdb). Data persists independently of deployments. The interface defines methods for:
 - User management (create, retrieve by username/id)
 - Clothing CRUD operations with laundry tracking
 - Outfit management with favorites and wear history

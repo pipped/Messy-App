@@ -4,17 +4,13 @@ import * as schema from "@shared/schema";
 
 const { Pool } = pg;
 
-// Prefer individual PG vars (Replit-provisioned) over DATABASE_URL (may be stale Neon URL)
-const pool = process.env.PGHOST
-  ? new Pool({
-      host: process.env.PGHOST,
-      port: parseInt(process.env.PGPORT || "5432"),
-      database: process.env.PGDATABASE,
-      user: process.env.PGUSER,
-      password: process.env.PGPASSWORD,
-      ssl: { rejectUnauthorized: false },
-    })
-  : new Pool({ connectionString: process.env.DATABASE_URL });
+if (!process.env.DATABASE_URL) {
+  throw new Error("DATABASE_URL must be set. Did you forget to provision a database?");
+}
 
-export { pool };
+export const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: false,
+});
+
 export const db = drizzle(pool, { schema });
