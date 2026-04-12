@@ -9,19 +9,19 @@ export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
 
   getClothing(id: string): Promise<Clothing | undefined>;
-  getAllClothing(): Promise<Clothing[]>;
-  getAvailableClothing(): Promise<Clothing[]>;
-  getClothingByTagId(tagId: string): Promise<Clothing | undefined>;
-  createClothing(clothing: InsertClothing): Promise<Clothing>;
+  getAllClothing(userId: string): Promise<Clothing[]>;
+  getAvailableClothing(userId: string): Promise<Clothing[]>;
+  getClothingByTagId(tagId: string, userId: string): Promise<Clothing | undefined>;
+  createClothing(clothing: InsertClothing, userId: string): Promise<Clothing>;
   updateClothing(id: string, clothing: Partial<InsertClothing>): Promise<Clothing | undefined>;
   deleteClothing(id: string): Promise<boolean>;
   markClothingAsWorn(id: string): Promise<Clothing | undefined>;
   toggleClothingLaundry(id: string): Promise<Clothing | undefined>;
 
   getOutfit(id: string): Promise<Outfit | undefined>;
-  getAllOutfits(): Promise<Outfit[]>;
-  getFavoriteOutfits(): Promise<Outfit[]>;
-  createOutfit(outfit: InsertOutfit): Promise<Outfit>;
+  getAllOutfits(userId: string): Promise<Outfit[]>;
+  getFavoriteOutfits(userId: string): Promise<Outfit[]>;
+  createOutfit(outfit: InsertOutfit, userId: string): Promise<Outfit>;
   updateOutfit(id: string, updates: Partial<InsertOutfit>): Promise<Outfit | undefined>;
   toggleOutfitFavorite(id: string): Promise<Outfit | undefined>;
   markOutfitAsWorn(id: string): Promise<Outfit | undefined>;
@@ -105,14 +105,15 @@ export class SqliteStorage implements IStorage {
 
       -- Migrate: add new columns if they don't exist yet (SQLite supports this)
     `);
-    // Run migrations safely (ADD COLUMN IF NOT EXISTS is not supported in older SQLite,
-    // so we use a try/catch per column)
+
     const addColumnIfMissing = (sql: string) => {
       try { this.db.exec(sql); } catch (_) { /* column already exists */ }
     };
     addColumnIfMissing("ALTER TABLE clothing ADD COLUMN washing_instructions TEXT");
     addColumnIfMissing("ALTER TABLE clothing ADD COLUMN notes TEXT");
     addColumnIfMissing("ALTER TABLE clothing ADD COLUMN purchase_price TEXT");
+    addColumnIfMissing("ALTER TABLE clothing ADD COLUMN user_id TEXT");
+
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS outfits (
         id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-4' || substr(lower(hex(randomblob(2))),2) || '-' || substr('89ab',abs(random()) % 4 + 1, 1) || substr(lower(hex(randomblob(2))),2) || '-' || lower(hex(randomblob(6)))),
@@ -126,6 +127,7 @@ export class SqliteStorage implements IStorage {
         created_at TEXT NOT NULL DEFAULT (datetime('now'))
       );
     `);
+    addColumnIfMissing("ALTER TABLE outfits ADD COLUMN user_id TEXT");
   }
 
   // ── Users ──────────────────────────────────────────────────────────────────
@@ -153,27 +155,27 @@ export class SqliteStorage implements IStorage {
     return row ? rowToClothing(row) : undefined;
   }
 
-  async getAllClothing(): Promise<Clothing[]> {
-    const rows = this.db.prepare("SELECT * FROM clothing ORDER BY created_at DESC").all();
+  async getAllClothing(userId: string): Promise<Clothing[]> {
+    const rows = this.db.prepare("SELECT * FROM clothing WHERE user_id = ? ORDER BY created_at DESC").all(userId);
     return rows.map(rowToClothing);
   }
 
-  async getAvailableClothing(): Promise<Clothing[]> {
-    const rows = this.db.prepare("SELECT * FROM clothing WHERE in_laundry = 0 ORDER BY created_at DESC").all();
+  async getAvailableClothing(userId: string): Promise<Clothing[]> {
+    const rows = this.db.prepare("SELECT * FROM clothing WHERE user_id = ? AND in_laundry = 0 ORDER BY created_at DESC").all(userId);
     return rows.map(rowToClothing);
   }
 
-  async getClothingByTagId(tagId: string): Promise<Clothing | undefined> {
-    const row = this.db.prepare("SELECT * FROM clothing WHERE tag_id = ?").get(tagId);
+  async getClothingByTagId(tagId: string, userId: string): Promise<Clothing | undefined> {
+    const row = this.db.prepare("SELECT * FROM clothing WHERE tag_id = ? AND user_id = ?").get(tagId, userId);
     return row ? rowToClothing(row) : undefined;
   }
 
-  async createClothing(c: InsertClothing): Promise<Clothing> {
+  async createClothing(c: InsertClothing, userId: string): Promise<Clothing> {
     const id = crypto.randomUUID();
     const now = new Date().toISOString();
     this.db.prepare(`
-      INSERT INTO clothing (id, tag_id, name, category, color, season, occasion, image_url, in_laundry, last_worn, times_worn, created_at, washing_instructions, notes, purchase_price)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO clothing (id, tag_id, name, category, color, season, occasion, image_url, in_laundry, last_worn, times_worn, created_at, washing_instructions, notes, purchase_price, user_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       id, c.tagId, c.name, c.category, c.color, c.season, c.occasion,
       c.imageUrl ?? null,
@@ -184,6 +186,7 @@ export class SqliteStorage implements IStorage {
       c.washingInstructions ?? null,
       c.notes ?? null,
       c.purchasePrice ?? null,
+      userId,
     );
     return rowToClothing(this.db.prepare("SELECT * FROM clothing WHERE id = ?").get(id));
   }
@@ -243,28 +246,29 @@ export class SqliteStorage implements IStorage {
     return row ? rowToOutfit(row) : undefined;
   }
 
-  async getAllOutfits(): Promise<Outfit[]> {
-    const rows = this.db.prepare("SELECT * FROM outfits ORDER BY created_at DESC").all();
+  async getAllOutfits(userId: string): Promise<Outfit[]> {
+    const rows = this.db.prepare("SELECT * FROM outfits WHERE user_id = ? ORDER BY created_at DESC").all(userId);
     return rows.map(rowToOutfit);
   }
 
-  async getFavoriteOutfits(): Promise<Outfit[]> {
-    const rows = this.db.prepare("SELECT * FROM outfits WHERE is_favorite = 1 ORDER BY created_at DESC").all();
+  async getFavoriteOutfits(userId: string): Promise<Outfit[]> {
+    const rows = this.db.prepare("SELECT * FROM outfits WHERE user_id = ? AND is_favorite = 1 ORDER BY created_at DESC").all(userId);
     return rows.map(rowToOutfit);
   }
 
-  async createOutfit(o: InsertOutfit): Promise<Outfit> {
+  async createOutfit(o: InsertOutfit, userId: string): Promise<Outfit> {
     const id = crypto.randomUUID();
     const now = new Date().toISOString();
     this.db.prepare(`
-      INSERT INTO outfits (id, name, clothing_ids, occasion, season, is_favorite, last_worn, times_worn, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO outfits (id, name, clothing_ids, occasion, season, is_favorite, last_worn, times_worn, created_at, user_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       id, o.name, JSON.stringify(o.clothingIds), o.occasion, o.season,
       o.isFavorite ?? 0,
       o.lastWorn ? new Date(o.lastWorn).toISOString() : null,
       o.timesWorn ?? 0,
-      now
+      now,
+      userId,
     );
     return rowToOutfit(this.db.prepare("SELECT * FROM outfits WHERE id = ?").get(id));
   }

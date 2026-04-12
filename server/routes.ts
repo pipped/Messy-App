@@ -1,16 +1,31 @@
-import type { Express } from "express";
+import type { Express, Request } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertClothingSchema, insertOutfitSchema } from "@shared/schema";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 
+function getUserId(req: Request): string | null {
+  return (req.headers["x-user-id"] as string) || null;
+}
+
+function requireUserId(req: Request, res: any): string | null {
+  const userId = getUserId(req);
+  if (!userId) {
+    res.status(401).json({ error: "Not authenticated" });
+    return null;
+  }
+  return userId;
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Clothing Routes
   
   // Get all clothing items
-  app.get("/api/clothing", async (_req, res) => {
+  app.get("/api/clothing", async (req, res) => {
+    const userId = requireUserId(req, res);
+    if (!userId) return;
     try {
-      const items = await storage.getAllClothing();
+      const items = await storage.getAllClothing(userId);
       res.json(items);
     } catch (error) {
       console.error("Error fetching clothing:", error);
@@ -34,16 +49,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Create new clothing item
   app.post("/api/clothing", async (req, res) => {
+    const userId = requireUserId(req, res);
+    if (!userId) return;
     try {
       const validated = insertClothingSchema.parse(req.body);
       
-      // Check if tag ID already exists
-      const existing = await storage.getClothingByTagId(validated.tagId);
+      // Check if tag ID already exists for this user
+      const existing = await storage.getClothingByTagId(validated.tagId, userId);
       if (existing) {
         return res.status(400).json({ error: "Tag ID already exists" });
       }
 
-      const item = await storage.createClothing(validated);
+      const item = await storage.createClothing(validated, userId);
       res.status(201).json(item);
     } catch (error) {
       console.error("Error creating clothing item:", error);
@@ -57,15 +74,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update clothing item
   app.patch("/api/clothing/:id", async (req, res) => {
     try {
-      // Validate with partial schema
       const partialSchema = insertClothingSchema.partial();
       const validated = partialSchema.parse(req.body);
       
-      // If updating tagId, check for duplicates
       if (validated.tagId) {
-        const existing = await storage.getClothingByTagId(validated.tagId);
-        if (existing && existing.id !== req.params.id) {
-          return res.status(400).json({ error: "Tag ID already exists" });
+        const userId = getUserId(req);
+        if (userId) {
+          const existing = await storage.getClothingByTagId(validated.tagId, userId);
+          if (existing && existing.id !== req.params.id) {
+            return res.status(400).json({ error: "Tag ID already exists" });
+          }
         }
       }
 
@@ -112,9 +130,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get available clothing (not in laundry)
-  app.get("/api/clothing/available", async (_req, res) => {
+  app.get("/api/clothing/available", async (req, res) => {
+    const userId = requireUserId(req, res);
+    if (!userId) return;
     try {
-      const items = await storage.getAvailableClothing();
+      const items = await storage.getAvailableClothing(userId);
       res.json(items);
     } catch (error) {
       console.error("Error fetching available clothing:", error);
@@ -139,9 +159,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Outfit Routes
 
   // Get all outfits
-  app.get("/api/outfits", async (_req, res) => {
+  app.get("/api/outfits", async (req, res) => {
+    const userId = requireUserId(req, res);
+    if (!userId) return;
     try {
-      const outfits = await storage.getAllOutfits();
+      const outfits = await storage.getAllOutfits(userId);
       res.json(outfits);
     } catch (error) {
       console.error("Error fetching outfits:", error);
@@ -165,9 +187,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Create new outfit
   app.post("/api/outfits", async (req, res) => {
+    const userId = requireUserId(req, res);
+    if (!userId) return;
     try {
       const validated = insertOutfitSchema.parse(req.body);
-      const outfit = await storage.createOutfit(validated);
+      const outfit = await storage.createOutfit(validated, userId);
       res.status(201).json(outfit);
     } catch (error) {
       console.error("Error creating outfit:", error);
@@ -179,9 +203,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get favorite outfits
-  app.get("/api/outfits/favorites", async (_req, res) => {
+  app.get("/api/outfits/favorites", async (req, res) => {
+    const userId = requireUserId(req, res);
+    if (!userId) return;
     try {
-      const favorites = await storage.getFavoriteOutfits();
+      const favorites = await storage.getFavoriteOutfits(userId);
       res.json(favorites);
     } catch (error) {
       console.error("Error fetching favorite outfits:", error);

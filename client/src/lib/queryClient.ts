@@ -1,5 +1,21 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
+function getUserId(): string | null {
+  try {
+    const raw = localStorage.getItem("messy-user");
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed?.id || null;
+  } catch {
+    return null;
+  }
+}
+
+function userIdHeaders(): Record<string, string> {
+  const id = getUserId();
+  return id ? { "X-User-Id": id } : {};
+}
+
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
@@ -14,7 +30,10 @@ export async function apiRequest(
 ): Promise<Response> {
   const res = await fetch(url, {
     method,
-    headers: data ? { "Content-Type": "application/json" } : {},
+    headers: {
+      ...(data ? { "Content-Type": "application/json" } : {}),
+      ...userIdHeaders(),
+    },
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
   });
@@ -31,6 +50,7 @@ export const getQueryFn: <T>(options: {
   async ({ queryKey }) => {
     const res = await fetch(queryKey.join("/") as string, {
       credentials: "include",
+      headers: userIdHeaders(),
     });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {
