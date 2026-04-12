@@ -30,6 +30,11 @@ export default function Scanner() {
   useEffect(() => () => { nfcRef.current = null; }, []);
 
   const handleTagDetected = (tagId: string) => {
+    // Stop the NFC reader immediately so it can't fire again for the same tag
+    if (nfcRef.current) {
+      nfcRef.current.onreading = null;
+      nfcRef.current.onreadingerror = null;
+    }
     setScannedTag(tagId);
     setRecentTags(prev => [tagId, ...prev.filter(t => t !== tagId)].slice(0, 5));
     const existing = clothes?.find(c => c.tagId === tagId);
