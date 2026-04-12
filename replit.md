@@ -46,13 +46,15 @@ Preferred communication style: Simple, everyday language.
 
 **API Design**: RESTful API architecture with JSON request/response format using DatabaseStorage with PostgreSQL.
 
+**Authentication**: All clothing/outfit routes require `X-User-Id` header sent automatically by the frontend. Each user only sees their own data. Cache is cleared on login/logout/register to prevent data leakage between accounts.
+
 **Key API Endpoints**:
-- `GET/POST /api/clothing` - Retrieve all items or create new clothing
+- `GET/POST /api/clothing` - Retrieve all items or create new clothing (scoped by X-User-Id header)
 - `GET/PUT/DELETE /api/clothing/:id` - Single item operations
 - `PATCH /api/clothing/:id/worn` - Mark item as worn today
 - `PATCH /api/clothing/:id/laundry` - Toggle laundry status
-- `GET /api/clothing/available` - Get non-laundry items only
-- `GET/POST /api/outfits` - Outfit management
+- `GET /api/clothing/available` - Get non-laundry items only (scoped by X-User-Id)
+- `GET/POST /api/outfits` - Outfit management (scoped by X-User-Id)
 - `DELETE /api/outfits/:id` - Delete outfit
 - `PATCH /api/outfits/:id/favorite` - Toggle favorite status
 - `PATCH /api/outfits/:id/worn` - Mark outfit as worn

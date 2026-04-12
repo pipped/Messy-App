@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Plus, Search, Shirt, Package, WashingMachine } from "lucide-react";
+import { Plus, Search, Shirt, Package, WashingMachine, Layers, Footprints, Wind, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -27,10 +27,10 @@ export default function Wardrobe() {
   const categories = [
     { id: "all", label: "All", icon: Package },
     { id: "top", label: "Tops", icon: Shirt },
-    { id: "bottom", label: "Bottoms", icon: Shirt },
-    { id: "shoes", label: "Shoes", icon: Shirt },
-    { id: "outerwear", label: "Outerwear", icon: Shirt },
-    { id: "accessory", label: "Accessories", icon: Shirt },
+    { id: "bottom", label: "Bottoms", icon: Layers },
+    { id: "shoes", label: "Shoes", icon: Footprints },
+    { id: "outerwear", label: "Outerwear", icon: Wind },
+    { id: "accessory", label: "Accessories", icon: Tag },
   ];
 
   const filteredClothes = clothes?.filter((item) => {
