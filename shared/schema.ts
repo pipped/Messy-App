@@ -20,7 +20,8 @@ export type User = typeof users.$inferSelect;
 // Clothing item schema
 export const clothing = pgTable("clothing", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  tagId: text("tag_id").notNull().unique(), // RFID/NFC tag identifier
+  userId: text("user_id"), // Owner of this item
+  tagId: text("tag_id").notNull(), // RFID/NFC tag identifier
   name: text("name").notNull(),
   category: text("category").notNull(), // top, bottom, shoes, outerwear, accessory
   color: text("color").notNull(),
@@ -61,6 +62,7 @@ export type Clothing = typeof clothing.$inferSelect;
 // Outfit schema for saving favorite combinations
 export const outfits = pgTable("outfits", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: text("user_id"), // Owner of this outfit
   name: text("name").notNull(),
   clothingIds: text("clothing_ids").array().notNull(), // Array of clothing item IDs
   occasion: text("occasion").notNull(),
