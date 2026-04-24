@@ -16,7 +16,7 @@ MessyApp bridges physical and digital systems using NFC technology. Clothing ite
 
 ## Tech Stack
 
-- Frontend: (add your tech — e.g. React)  
+- Frontend: (React)  
 - Backend: (Node.js, Express, etc.)  
 - Database: (MongoDB, Firebase, etc.)  
 - APIs: Weather API integration  
